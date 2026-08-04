@@ -501,7 +501,7 @@ async function fazerLogin() {
     return;
   }
 
-  entrarNoPortal(nome, email);
+  entrarNoPortal(nome, email, registro && registro.admin);
 }
 
 async function salvarNovaSenha() {
@@ -526,13 +526,20 @@ async function salvarNovaSenha() {
   } catch(e) { /* modo demo */ }
 
   document.getElementById('modal-senha').classList.remove('active');
-  entrarNoPortal(state.user.nome, state.user.email);
+  entrarNoPortal(state.user.nome, state.user.email, state._registroDados && state._registroDados.admin);
 }
 
-async function entrarNoPortal(nome, email) {
+async function entrarNoPortal(nome, email, isAdmin) {
   document.getElementById('unit-header-name').textContent  = nome;
   document.getElementById('unit-header-email').textContent = email;
   document.getElementById('greeting-name').textContent     = nome.split(' ')[0];
+  if (isAdmin) {
+    mostrarAdmin();
+    document.getElementById('admin-login-section').classList.add('hidden');
+    document.getElementById('admin-panel').classList.remove('hidden');
+    carregarEmails();
+    return;
+  }
   await carregarTurmas();
   showView('unit-view');
 }
