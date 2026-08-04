@@ -44,12 +44,13 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 .btn-logout:hover{background:rgba(255,255,255,.2)}
 /* LAYOUT */
 .app-main{flex:1;padding:28px 24px;max-width:720px;margin:0 auto;width:100%}
+.rodape{text-align:center;padding:16px;font-size:11px;color:#aab;letter-spacing:.04em}
 .page-title{font-size:22px;font-weight:700;color:var(--navy);margin-bottom:6px}
 .page-sub{font-size:14px;color:var(--text-light);margin-bottom:28px}
 .back-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-light);cursor:pointer;margin-bottom:20px;background:none;border:none;padding:0;transition:.2s}
 .back-btn:hover{color:var(--navy)}
 /* UNIDADES */
-.unit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:480px}
+.unit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:480px;margin:0 auto}
 .unit-card{background:var(--card);border-radius:var(--radius);padding:28px 20px;text-align:center;cursor:pointer;box-shadow:var(--shadow);border:2px solid transparent;transition:.2s}
 .unit-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 6px 24px rgba(22,32,51,.14)}
 .unit-icon{font-size:36px;margin-bottom:12px}
@@ -166,8 +167,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
     <div class="login-divider"></div>
     <div class="login-title">Portal do Professor</div>
     <div class="login-sub">Avaliação de Qualidade da Agenda Clínica</div>
-    <div class="field"><label>Nome completo</label><input type="text" id="prof-name" placeholder="Dr. João Silva" autocomplete="name"></div>
-    <div class="field"><label>E-mail pessoal</label><input type="email" id="prof-email" placeholder="seu@gmail.com" autocomplete="email"></div>
+    <div class="field"><label>E-mail</label><input type="email" id="prof-email" placeholder="seu@email.com" autocomplete="email"></div>
     <div class="field"><label>Senha</label><input type="password" id="prof-senha" placeholder="Digite sua senha" autocomplete="current-password"></div>
     <button class="btn-primary" onclick="fazerLogin()">Entrar</button>
     <div id="login-error" class="error-msg"></div>
@@ -302,15 +302,20 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
   <div class="admin-content">
     <div id="admin-login-section" class="admin-section">
       <div class="admin-section-title">Acesso de Administrador</div>
-      <div class="field"><label>Senha</label><input type="password" id="admin-password" placeholder="Digite a senha de administrador"></div>
+      <div class="field"><label>E-mail</label><input type="email" id="admin-email" placeholder="seu@email.com" autocomplete="email"></div>
+      <div class="field"><label>Senha</label><input type="password" id="admin-password" placeholder="Digite sua senha"></div>
       <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="loginAdmin()">Entrar</button>
       <div id="admin-error" class="error-msg"></div>
     </div>
     <div id="admin-panel" class="hidden">
       <div class="admin-section">
-        <div class="admin-section-title">📥 Exportar respostas do dia</div>
-        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Baixa um arquivo Excel com todas as avaliações enviadas hoje pelos professores.</p>
-        <button class="btn-excel" onclick="exportarExcel()">📊 Baixar Excel — hoje</button>
+        <div class="admin-section-title">📥 Exportar respostas</div>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Baixa um arquivo Excel com as avaliações enviadas pelos professores.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-excel" onclick="exportarExcel('dia')">📊 Hoje</button>
+          <button class="btn-excel" onclick="exportarExcel('semana')">📊 Esta semana</button>
+          <button class="btn-excel" onclick="exportarExcel('mes')">📊 Este mês</button>
+        </div>
       </div>
       <div class="admin-section">
         <div class="admin-section-title">E-mails autorizados</div>
@@ -457,13 +462,12 @@ async function ghPut(path, content, sha, message) {
 
 // ── Login ──
 async function fazerLogin() {
-  const nome  = document.getElementById('prof-name').value.trim();
   const email = document.getElementById('prof-email').value.trim().toLowerCase();
   const senha = document.getElementById('prof-senha').value;
   const errEl = document.getElementById('login-error');
   const btn   = document.querySelector('#login-view .btn-primary');
 
-  if (!nome || !email || !senha) { mostrarErro(errEl, 'Preencha todos os campos.'); return; }
+  if (!email || !senha) { mostrarErro(errEl, 'Preencha e-mail e senha.'); return; }
   errEl.style.display = 'none';
   btn.textContent = 'Verificando...'; btn.disabled = true;
 
@@ -488,6 +492,7 @@ async function fazerLogin() {
 
   btn.textContent = 'Entrar'; btn.disabled = false;
 
+  const nome = registro ? registro.nome : email;
   state.user = { nome, email };
   state._registroSha = null;
 
@@ -690,8 +695,12 @@ function renderPacientes() {
           <input type="text" id="det-motivo-${i}" placeholder="Ex: paciente sem queda de cabelo ativa..." value="${det.motivo||''}" oninput="salvarDetalhe(${i})">
         </div>
         <div>
-          <label>Indica para outro módulo? (opcional)</label>
-          <select id="det-indica-${i}" onchange="salvarDetalhe(${i})" style="width:100%;padding:9px 12px;border:1.5px solid #F5C6CB;border-radius:8px;font-size:13px;color:var(--text);background:#fff"><option value="">Selecione o módulo indicado (opcional)</option><option>Avaliação Estética e planejamento terapêutico</option><option>Técnicas de aplicação de Toxina Botulínica na face</option><option>Outras técnicas de aplicação toxina (hiperidrose, cefaleia, blefarospasmo, paralisia facial)</option><option>Farmacologia dermatológica e estética</option><option>Técnicas de preenchimento com ácido hialurônico na face I</option><option>Técnicas de preenchimento com ácido hialurônico lábios, olheiras e queixo II</option><option>Dermatoses inestéticas I: melasma, discromias e acne</option><option>Dermatoses inestéticas II: fotoenvelhecimento, rosácea, cicatriz de acne</option><option>Laserterapia em medicina estética I</option><option>Laserterapia em medicina estética II</option><option>Peelings químicos</option><option>Tratamentos corporais para flacidez, gordura localizada e estrias</option><option>Tratamentos estéticos corporais/ gluteos</option><option>Fios regenerativos: sustentação, preenchimento e estímulo de colágeno</option><option>Tratamentos combinado estética facial: laser, fios e injetáveis combinados</option><option>Tratamentos capilares</option><option>Estética genital feminina</option><option>Técnicas de rejuvenescimento regenerativo</option><option>Consulta com Oftalmologista</option><option>Consulta com Endocrinologista</option><option>Consulta com Psiquiatra</option><option>Consulta com Nutrólogo</option><option>Consulta com Dermatologia Cirúrgica</option></select>
+          <label>Indica para outro módulo? (opcional — pode marcar mais de um)</label>
+          <div id="det-indica-${i}" style="border:1.5px solid #F5C6CB;border-radius:8px;padding:10px 12px;background:#fff;font-size:13px;max-height:180px;overflow-y:auto">
+            ${['Avaliação Estética e planejamento terapêutico','Técnicas de aplicação de Toxina Botulínica na face','Outras técnicas de aplicação toxina (hiperidrose, cefaleia, blefarospasmo, paralisia facial)','Farmacologia dermatológica e estética','Técnicas de preenchimento com ácido hialurônico na face I','Técnicas de preenchimento com ácido hialurônico lábios, olheiras e queixo II','Dermatoses inestéticas I: melasma, discromias e acne','Dermatoses inestéticas II: fotoenvelhecimento, rosácea, cicatriz de acne','Laserterapia em medicina estética I','Laserterapia em medicina estética II','Peelings químicos','Tratamentos corporais para flacidez, gordura localizada e estrias','Tratamentos estéticos corporais/ gluteos','Fios regenerativos: sustentação, preenchimento e estímulo de colágeno','Tratamentos combinado estética facial: laser, fios e injetáveis combinados','Tratamentos capilares','Estética genital feminina','Técnicas de rejuvenescimento regenerativo','Consulta com Oftalmologista','Consulta com Endocrinologista','Consulta com Psiquiatra','Consulta com Nutrólogo','Consulta com Dermatologia Cirúrgica'].map(m=>`<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer"><input type="checkbox" value="${m}" onchange="salvarDetalhe(${i})" style="accent-color:var(--navy)"> ${m}</label>`).join('')}
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer"><input type="checkbox" id="det-outros-check-${i}" onchange="toggleOutrosModulo(${i})" style="accent-color:var(--navy)"> Outros</label>
+            <input type="text" id="det-outros-txt-${i}" placeholder="Descreva o módulo..." oninput="salvarDetalhe(${i})" style="display:none;width:100%;margin-top:6px;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          </div>
         </div>
       </div>
     </div>`;
@@ -707,11 +716,24 @@ function avaliar(idx, valor, btn) {
   if (det) det.classList.toggle('visible', valor === 'nao');
 }
 
+function toggleOutrosModulo(idx) {
+  const check = document.getElementById('det-outros-check-'+idx);
+  const txt   = document.getElementById('det-outros-txt-'+idx);
+  if (txt) txt.style.display = check?.checked ? 'block' : 'none';
+  salvarDetalhe(idx);
+}
+
 function salvarDetalhe(idx) {
-  const nome    = state.pacientes[idx].nome;
-  const motivo  = document.getElementById('det-motivo-'+idx)?.value || '';
-  const indica  = document.getElementById('det-indica-'+idx)?.value || '';
-  state.respostas['__det_'+nome] = { motivo, indica };
+  const nome   = state.pacientes[idx].nome;
+  const motivo = document.getElementById('det-motivo-'+idx)?.value || '';
+  const container = document.getElementById('det-indica-'+idx);
+  const checkboxes = container ? container.querySelectorAll('input[type=checkbox]:not(#det-outros-check-'+idx+')') : [];
+  const modulos = [];
+  checkboxes.forEach(cb => { if (cb.checked) modulos.push(cb.value); });
+  const outrosCheck = document.getElementById('det-outros-check-'+idx);
+  const outrosTxt   = document.getElementById('det-outros-txt-'+idx);
+  if (outrosCheck?.checked && outrosTxt?.value.trim()) modulos.push(outrosTxt.value.trim());
+  state.respostas['__det_'+nome] = { motivo, indica: modulos.join('; ') };
 }
 
 function habilitarCorrecao() {
@@ -777,14 +799,31 @@ async function enviarFormulario() {
 // ── Admin ──
 function mostrarAdmin() { showView('admin-view'); }
 
-function loginAdmin() {
-  const pwd = document.getElementById('admin-password').value;
-  const err = document.getElementById('admin-error');
-  if (pwd !== CONFIG.admin_password) { mostrarErro(err,'Senha incorreta.'); return; }
-  err.style.display = 'none';
-  document.getElementById('admin-login-section').classList.add('hidden');
-  document.getElementById('admin-panel').classList.remove('hidden');
-  carregarEmails();
+async function loginAdmin() {
+  const email = document.getElementById('admin-email').value.trim().toLowerCase();
+  const pwd   = document.getElementById('admin-password').value;
+  const err   = document.getElementById('admin-error');
+  if (!email || !pwd) { mostrarErro(err,'Preencha e-mail e senha.'); return; }
+  try {
+    const dados = await ghGet('data/emails.json');
+    const lista = dados ? dados.content : [];
+    const reg = lista.find(e => e.email.toLowerCase() === email);
+    if (!reg || !reg.admin) { mostrarErro(err,'E-mail não autorizado como administrador.'); return; }
+    if (reg.senha !== pwd) { mostrarErro(err,'Senha incorreta.'); return; }
+    err.style.display = 'none';
+    if (reg.primeiro_acesso) {
+      state.user = { nome: reg.nome, email: reg.email };
+      state._registroDados = reg;
+      document.getElementById('nova-senha').value = '';
+      document.getElementById('confirma-senha').value = '';
+      document.getElementById('modal-erro').style.display = 'none';
+      document.getElementById('modal-senha').classList.add('active');
+      return;
+    }
+    document.getElementById('admin-login-section').classList.add('hidden');
+    document.getElementById('admin-panel').classList.remove('hidden');
+    carregarEmails();
+  } catch(e) { mostrarErro(err,'Erro ao verificar acesso.'); }
 }
 
 async function carregarEmails() {
@@ -837,44 +876,69 @@ async function removerEmail(i) {
 }
 
 // ── Exportar Excel ──
-async function exportarExcel() {
-  const hoje = dataHoje();
-  let linhas = [['Professor','E-mail','Unidade','Turma','Paciente','Avaliação','Horário']];
+function datasParaPeriodo(periodo) {
+  const hoje = new Date();
+  const datas = [];
+  if (periodo === 'dia') {
+    datas.push(dataHoje());
+  } else if (periodo === 'semana') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoje); d.setDate(hoje.getDate() - i);
+      datas.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    }
+  } else if (periodo === 'mes') {
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(hoje); d.setDate(hoje.getDate() - i);
+      datas.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    }
+  }
+  return datas;
+}
+
+async function exportarExcel(periodo) {
+  const datas = datasParaPeriodo(periodo || 'dia');
+  const label_periodo = periodo==='semana'?'semana':periodo==='mes'?'mes':'hoje';
+  let linhas = [['Professor','E-mail','Unidade','Turma','Paciente','Avaliação','Motivo (Fora do Perfil)','Indicação de Módulo','Horário']];
 
   try {
-    // Listar arquivos da pasta de hoje
-    const r = await fetch(
-      `${CONFIG.worker_url}/github/data/responses/${hoje}`,
-      { headers:{ Accept:'application/vnd.github.v3+json' } }
-    );
-    if (!r.ok) { alert('Nenhuma resposta encontrada para hoje.'); return; }
-    const arquivos = await r.json();
+    for (const data of datas) {
+      const r = await fetch(
+        `${CONFIG.worker_url}/github/data/responses/${data}`,
+        { headers:{ Accept:'application/vnd.github.v3+json' } }
+      );
+      if (!r.ok) continue;
+      const arquivos = await r.json();
+      if (!Array.isArray(arquivos)) continue;
 
-    for (const arq of arquivos) {
-      const d = await ghGet('data/responses/'+hoje+'/'+arq.name);
-      if (!d) continue;
-      const resp = d.content;
-      const hora = resp.timestamp ? resp.timestamp.replace('T',' ').substring(0,16) : '';
-      const avaliacoes = resp.avaliacoes || {};
-      for (const [paciente, avaliacao] of Object.entries(avaliacoes)) {
-        const label = avaliacao==='sim'?'Dentro do Perfil':avaliacao==='nao'?'Fora do Perfil':avaliacao==='outros'?'Não compareceu':'—';
-        linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', paciente, label, hora]);
-      }
-      for (const extra of (resp.outros||[])) {
-        linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', extra+'(encaixe)', '—', hora]);
+      for (const arq of arquivos) {
+        const d = await ghGet('data/responses/'+data+'/'+arq.name);
+        if (!d) continue;
+        const resp = d.content;
+        const hora = resp.timestamp ? resp.timestamp.replace('T',' ').substring(0,16) : '';
+        const avaliacoes = resp.avaliacoes || {};
+        const motivos    = resp.motivos    || {};
+        const indicacoes = resp.indicacoes || {};
+        for (const [paciente, avaliacao] of Object.entries(avaliacoes)) {
+          const lbl = avaliacao==='sim'?'Dentro do Perfil':avaliacao==='nao'?'Fora do Perfil':avaliacao==='outros'?'Não compareceu':'—';
+          const motivo    = avaliacao==='nao' ? (motivos[paciente]    || '') : '';
+          const indicacao = avaliacao==='nao' ? (indicacoes[paciente] || '') : '';
+          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', paciente, lbl, motivo, indicacao, hora]);
+        }
+        for (const extra of (resp.outros||[])) {
+          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', extra+' (encaixe)', '—', '', '', hora]);
+        }
       }
     }
   } catch(e) { alert('Erro ao buscar dados: '+e.message); return; }
 
-  if (linhas.length <= 1) { alert('Nenhuma avaliação encontrada para hoje.'); return; }
+  if (linhas.length <= 1) { alert('Nenhuma avaliação encontrada para o período.'); return; }
 
-  // Gerar CSV e baixar como .csv (Excel abre nativamente)
-  const csv = linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const bom  = '﻿'; // BOM para Excel reconhecer UTF-8
+  const csv  = linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const bom  = '﻿';
   const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = 'avaliacoes_'+hoje+'.csv'; a.click();
+  a.href = url; a.download = 'avaliacoes_'+label_periodo+'.csv'; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -889,8 +953,10 @@ function normalizar(s) {
 }
 
 document.getElementById('prof-email').addEventListener('keydown', e=>{ if(e.key==='Enter') fazerLogin(); });
-document.getElementById('prof-name').addEventListener('keydown',  e=>{ if(e.key==='Enter') fazerLogin(); });
+document.getElementById('prof-senha').addEventListener('keydown', e=>{ if(e.key==='Enter') fazerLogin(); });
 document.getElementById('admin-password').addEventListener('keydown', e=>{ if(e.key==='Enter') loginAdmin(); });
+document.getElementById('admin-email').addEventListener('keydown', e=>{ if(e.key==='Enter') loginAdmin(); });
 </script>
+<div class="rodape">Desenvolvido por Larissa Carreiro da Silva</div>
 </body>
 </html>
