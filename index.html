@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -334,9 +334,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
   </div>
 </div><script>
 const CONFIG = {
-  github_owner:   'larissa-posmedica',
-  github_repo:    'alertas-posmedica',
-  github_pat:     'TOKEN_AQUI',
+  worker_url:     'https://portal-posmedica.larissa-carreiro.workers.dev',
   admin_password: 'posmedica2026',
 };
 
@@ -439,8 +437,8 @@ function showView(id) {
 // ── GitHub API ──
 async function ghGet(path) {
   const r = await fetch(
-    `https://api.github.com/repos/${CONFIG.github_owner}/${CONFIG.github_repo}/contents/${path}`,
-    { headers: { Authorization: `token ${CONFIG.github_pat}`, Accept: 'application/vnd.github.v3+json' } }
+    `${CONFIG.worker_url}/github/${path}`,
+    { headers: { Accept: 'application/vnd.github.v3+json' } }
   );
   if (!r.ok) return null;
   const d = await r.json();
@@ -451,8 +449,8 @@ async function ghPut(path, content, sha, message) {
   const body = { message, content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))) };
   if (sha) body.sha = sha;
   const r = await fetch(
-    `https://api.github.com/repos/${CONFIG.github_owner}/${CONFIG.github_repo}/contents/${path}`,
-    { method:'PUT', headers:{ Authorization:`token ${CONFIG.github_pat}`, 'Content-Type':'application/json' }, body:JSON.stringify(body) }
+    `${CONFIG.worker_url}/github/${path}`,
+    { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }
   );
   return r.ok;
 }
@@ -839,8 +837,8 @@ async function exportarExcel() {
   try {
     // Listar arquivos da pasta de hoje
     const r = await fetch(
-      `https://api.github.com/repos/${CONFIG.github_owner}/${CONFIG.github_repo}/contents/data/responses/${hoje}`,
-      { headers:{ Authorization:`token ${CONFIG.github_pat}`, Accept:'application/vnd.github.v3+json' } }
+      `${CONFIG.worker_url}/github/data/responses/${hoje}`,
+      { headers:{ Accept:'application/vnd.github.v3+json' } }
     );
     if (!r.ok) { alert('Nenhuma resposta encontrada para hoje.'); return; }
     const arquivos = await r.json();
