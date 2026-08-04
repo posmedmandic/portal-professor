@@ -274,6 +274,10 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
       </div>
       <div class="outros-tags" id="outros-tags"></div>
     </div>
+    <div style="background:#fff;border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)">
+      <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:10px">💬 Observação geral da turma (opcional)</div>
+      <textarea id="obs-geral" placeholder="Comentários gerais sobre a aula, perfil geral da turma, sugestões..." style="width:100%;padding:10px 12px;border:1.5px solid #DDE3EC;border-radius:8px;font-size:14px;min-height:90px;resize:vertical;font-family:inherit"></textarea>
+    </div>
     <div style="padding-bottom:40px">
       <button class="submit-btn" id="submit-btn" onclick="enviarFormulario()">Enviar Avaliação</button>
     </div>
@@ -308,6 +312,10 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
       <div id="admin-error" class="error-msg"></div>
     </div>
     <div id="admin-panel" class="hidden">
+      <div class="admin-section">
+        <div class="admin-section-title">📊 Progresso de hoje</div>
+        <div id="progresso-container" style="font-size:13px;color:var(--text-light)">Carregando...</div>
+      </div>
       <div class="admin-section">
         <div class="admin-section-title">📥 Exportar respostas</div>
         <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Baixa um arquivo Excel com as avaliações enviadas pelos professores.</p>
@@ -543,6 +551,7 @@ async function entrarNoPortal(nome, email, isAdmin) {
     document.getElementById('admin-login-section').classList.add('hidden');
     document.getElementById('admin-panel').classList.remove('hidden');
     carregarEmails();
+    carregarProgresso();
     return;
   }
   await carregarTurmas();
@@ -766,10 +775,19 @@ async function enviarFormulario() {
   btn.textContent = 'Enviando...'; btn.disabled = true;
 
   const hoje = dataHoje();
+  const motivos = {}, indicacoes = {};
+  state.pacientes.forEach((p,i) => {
+    const det = state.respostas['__det_'+p.nome];
+    if (det) { motivos[p.nome] = det.motivo || ''; indicacoes[p.nome] = det.indica || ''; }
+  });
+  const obsGeral = document.getElementById('obs-geral')?.value.trim() || '';
+  const avaliacoesFiltradas = {};
+  Object.entries(state.respostas).forEach(([k,v]) => { if (!k.startsWith('__det_')) avaliacoesFiltradas[k] = v; });
   const payload = {
     professor: state.user, turma: state.turma, unidade: state.unidade,
     data: hoje, timestamp: new Date().toISOString(),
-    avaliacoes: state.respostas, outros: state.outrosPacientes,
+    avaliacoes: avaliacoesFiltradas, motivos, indicacoes,
+    observacao: obsGeral, outros: state.outrosPacientes,
   };
   try {
     const chave = normalizar(state.turma);
@@ -799,6 +817,37 @@ async function enviarFormulario() {
 // ── Admin ──
 function mostrarAdmin() { showView('admin-view'); }
 
+async function carregarProgresso() {
+  const el = document.getElementById('progresso-container');
+  if (!el) return;
+  try {
+    const hoje = dataHoje();
+    // Buscar turmas totais
+    const turmasData = await ghGet('data/turmas.json');
+    let totalTurmas = 0;
+    if (turmasData && turmasData.content) {
+      Object.values(turmasData.content).forEach(spec => {
+        Object.values(spec.turmas || {}).forEach(lista => { totalTurmas += lista.length; });
+      });
+    }
+    // Buscar respostas de hoje
+    const r = await fetch(`${CONFIG.worker_url}/github/data/responses/${hoje}`, { headers:{ Accept:'application/vnd.github.v3+json' } });
+    const avaliadas = r.ok ? (await r.json()).filter(f => f.name.endsWith('.json')).length : 0;
+    const pct = totalTurmas > 0 ? Math.round((avaliadas / totalTurmas) * 100) : 0;
+    const cor = pct >= 80 ? '#27AE60' : pct >= 40 ? '#F39C12' : '#E74C3C';
+    el.innerHTML = `
+      <div style="margin-bottom:12px;font-size:15px;color:var(--text)">
+        <strong style="color:${cor}">${avaliadas}</strong> de <strong>${totalTurmas}</strong> turmas avaliadas hoje
+      </div>
+      <div style="background:#E8ECF2;border-radius:20px;height:12px;overflow:hidden">
+        <div style="width:${pct}%;background:${cor};height:100%;border-radius:20px;transition:.5s"></div>
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:${cor};font-weight:600">${pct}% concluído</div>`;
+  } catch(e) {
+    el.innerHTML = '<span style="color:#E74C3C">Erro ao carregar progresso.</span>';
+  }
+}
+
 async function loginAdmin() {
   const email = document.getElementById('admin-email').value.trim().toLowerCase();
   const pwd   = document.getElementById('admin-password').value;
@@ -823,6 +872,7 @@ async function loginAdmin() {
     document.getElementById('admin-login-section').classList.add('hidden');
     document.getElementById('admin-panel').classList.remove('hidden');
     carregarEmails();
+    carregarProgresso();
   } catch(e) { mostrarErro(err,'Erro ao verificar acesso.'); }
 }
 
