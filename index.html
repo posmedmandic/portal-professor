@@ -975,7 +975,7 @@ function datasParaPeriodo(periodo) {
 async function exportarExcel(periodo) {
   const datas = datasParaPeriodo(periodo || 'dia');
   const label_periodo = periodo==='semana'?'semana':periodo==='mes'?'mes':'hoje';
-  let linhas = [['Professor','E-mail','Unidade','Turma','Paciente','Avaliação','Motivo (Fora do Perfil)','Indicação de Módulo','Horário']];
+  let linhas = [['Professor','E-mail','Unidade','Turma','Horário Agendamento','Paciente','Avaliação','Motivo (Fora do Perfil)','Indicação de Módulo','Observações','Data/Hora Envio']];
 
   try {
     for (const data of datas) {
@@ -991,18 +991,21 @@ async function exportarExcel(periodo) {
         const d = await ghGet('data/responses/'+data+'/'+arq.name);
         if (!d) continue;
         const resp = d.content;
-        const hora = resp.timestamp ? resp.timestamp.replace('T',' ').substring(0,16) : '';
+        const envio      = resp.timestamp ? resp.timestamp.replace('T',' ').substring(0,16) : '';
         const avaliacoes = resp.avaliacoes || {};
         const motivos    = resp.motivos    || {};
         const indicacoes = resp.indicacoes || {};
+        const observacao = resp.observacao || '';
+        const pacientes_hora = resp.pacientes_hora || {};
         for (const [paciente, avaliacao] of Object.entries(avaliacoes)) {
-          const lbl = avaliacao==='sim'?'Dentro do Perfil':avaliacao==='nao'?'Fora do Perfil':avaliacao==='outros'?'Não compareceu':'—';
+          const lbl       = avaliacao==='sim'?'Dentro do Perfil':avaliacao==='nao'?'Fora do Perfil':avaliacao==='outros'?'Não compareceu':'—';
           const motivo    = avaliacao==='nao' ? (motivos[paciente]    || '') : '';
-          const indicacao = avaliacao==='nao' ? (indicacoes[paciente] || '') : '';
-          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', paciente, lbl, motivo, indicacao, hora]);
+          const indicacao = indicacoes[paciente] || '';
+          const hora_pac  = pacientes_hora[paciente] || '';
+          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', hora_pac, paciente, lbl, motivo, indicacao, observacao, envio]);
         }
         for (const extra of (resp.outros||[])) {
-          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', extra+' (encaixe)', '—', '', '', hora]);
+          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', '', extra+' (encaixe)', 'Encaixe', '', '', observacao, envio]);
         }
       }
     }
@@ -1010,7 +1013,7 @@ async function exportarExcel(periodo) {
 
   if (linhas.length <= 1) { alert('Nenhuma avaliação encontrada para o período.'); return; }
 
-  const csv  = linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const csv  = 'sep=;\n' + linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
   const bom  = '﻿';
   const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
   const url  = URL.createObjectURL(blob);
