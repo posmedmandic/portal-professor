@@ -83,6 +83,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 .patient-list{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
 .patient-card{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
 .patient-name{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:12px}
+.patient-hora{display:inline-block;background:#e8f0fe;color:#1a56db;font-size:12px;font-weight:700;padding:2px 8px;border-radius:12px;margin-right:6px;font-variant-numeric:tabular-nums}
 .patient-date{font-size:11px;color:var(--text-light);font-weight:400;margin-left:8px}
 .assessment-btns{display:flex;gap:10px;flex-wrap:wrap}
 .assess-btn{flex:1;min-width:80px;padding:10px 8px;border-radius:8px;border:2px solid;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
@@ -718,7 +719,7 @@ function renderPacientes() {
     const resp = state.respostas[p.nome];
     const det  = state.respostas['__det_'+p.nome] || {};
     return `<div class="patient-card">
-      <div class="patient-name">${p.nome}${p.data!==dataHoje()?'<span class="patient-date">⏰ '+formatarData(p.data)+'</span>':''}</div>
+      <div class="patient-name">${p.hora?'<span class="patient-hora">'+p.hora+'</span>':''} ${p.nome}${p.data!==dataHoje()?'<span class="patient-date">⏰ '+formatarData(p.data)+'</span>':''}</div>
       <div class="assessment-btns">
         <button class="assess-btn sim ${resp==='sim'?'active':''}" onclick="avaliar(${i},'sim',this)">✓ Dentro do Perfil</button>
         <button class="assess-btn nao ${resp==='nao'?'active':''}" onclick="avaliar(${i},'nao',this)">✗ Fora do Perfil</button>
