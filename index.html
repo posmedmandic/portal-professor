@@ -476,7 +476,8 @@ async function ghGet(path) {
   );
   if (!r.ok) return null;
   const d = await r.json();
-  return { content: JSON.parse(atob(d.content.replace(/\n/g,''))), sha: d.sha };
+  const bytes = Uint8Array.from(atob(d.content.replace(/\n/g,'')), c => c.charCodeAt(0));
+  return { content: JSON.parse(new TextDecoder('utf-8').decode(bytes)), sha: d.sha };
 }
 
 async function ghPut(path, content, sha, message) {
