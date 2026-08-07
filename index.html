@@ -152,7 +152,6 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
   .assessment-btns{flex-direction:column}
 }
 </style>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><!-- MODAL TROCA DE SENHA -->
 <div class="modal-overlay" id="modal-senha">
@@ -1144,10 +1143,17 @@ async function exportarExcel(periodo) {
 
   if (linhas.length <= 1) { alert('Nenhuma avaliação encontrada para o período.'); return; }
 
-  const ws = XLSX.utils.aoa_to_sheet(linhas);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Avaliações');
-  XLSX.writeFile(wb, 'avaliacoes_'+label_periodo+'.xlsx');
+  // UTF-16 LE com BOM — Excel abre corretamente sem configuração
+  const tsv = linhas.map(l => l.map(c => String(c).replace(/\t/g,' ')).join('\t')).join('\r\n');
+  const buf = new ArrayBuffer(2 + tsv.length * 2);
+  const view = new DataView(buf);
+  view.setUint16(0, 0xFEFF, true);
+  for (let i = 0; i < tsv.length; i++) view.setUint16(2 + i * 2, tsv.charCodeAt(i), true);
+  const blob = new Blob([buf], {type:'text/csv;charset=utf-16le;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'avaliacoes_'+label_periodo+'.csv'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Helpers ──
