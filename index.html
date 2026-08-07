@@ -152,6 +152,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
   .assessment-btns{flex-direction:column}
 }
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><!-- MODAL TROCA DE SENHA -->
 <div class="modal-overlay" id="modal-senha">
@@ -1143,13 +1144,10 @@ async function exportarExcel(periodo) {
 
   if (linhas.length <= 1) { alert('Nenhuma avaliação encontrada para o período.'); return; }
 
-  const bom = String.fromCharCode(0xFEFF);
-  const csv = 'sep=;\n' + linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
-  const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = 'avaliacoes_'+label_periodo+'.csv'; a.click();
-  URL.revokeObjectURL(url);
+  const ws = XLSX.utils.aoa_to_sheet(linhas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Avaliações');
+  XLSX.writeFile(wb, 'avaliacoes_'+label_periodo+'.xlsx');
 }
 
 // ── Helpers ──
