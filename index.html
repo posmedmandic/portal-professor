@@ -39,6 +39,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 .admin-link a{color:var(--gold);text-decoration:none;font-weight:600}
 /* HEADER */
 .app-header{background:var(--navy);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-header::after{content:'dev. Larissa Carreiro da Silva';position:absolute;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.28);letter-spacing:.06em;pointer-events:none}
 .app-header img{height:36px;object-fit:contain}
 .header-user{display:flex;align-items:center;gap:12px}
 .header-user-name{font-size:13px;color:rgba(255,255,255,.7)}
@@ -47,7 +48,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 .btn-logout:hover{background:rgba(255,255,255,.2)}
 /* LAYOUT */
 .app-main{flex:1;padding:28px 24px;max-width:720px;margin:0 auto;width:100%}
-.rodape{text-align:center;padding:16px;font-size:11px;color:#aab;letter-spacing:.04em}
+.rodape{text-align:center;padding:16px;font-size:12px;color:#7a8a9b;letter-spacing:.06em;font-style:italic}
 .page-title{font-size:22px;font-weight:700;color:var(--navy);margin-bottom:6px}
 .page-sub{font-size:14px;color:var(--text-light);margin-bottom:28px}
 .back-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-light);cursor:pointer;margin-bottom:20px;background:none;border:none;padding:0;transition:.2s}
@@ -656,12 +657,14 @@ async function selecionarTurma(el) {
   const turma = el.dataset.turma;
   state.turma = turma;
   state.outrosPacientes = []; state.respostas = {}; state.modoCorrecao = false;
+  state.pacientes_bloqueados = {}; // {nome: nomeProfessor}
   const hoje = dataHoje();
   document.getElementById('form-header-name').textContent = state.user.nome;
   document.getElementById('form-turma-title').textContent = turma + ' — ' + state.unidade;
   document.getElementById('form-date').textContent = 'Hoje, ' + formatarData(hoje);
   document.getElementById('submit-btn').disabled = false;
   document.getElementById('submit-btn').textContent = 'Enviar Avaliação';
+  document.getElementById('submit-btn').onclick = () => enviarFormulario(false);
 
   let pacientes = await carregarPacientes(turma, hoje);
   if (!pacientes || !pacientes.length) {
@@ -670,20 +673,62 @@ async function selecionarTurma(el) {
       {nome:'Ana Paula Rodrigues',data:hoje},{nome:'Pedro Henrique Costa',data:hoje},
     ];
   }
-  state.pacientes = pacientes;
 
   const resp = await verificarResposta(turma, hoje);
-  state.jaPreenchido = !!resp;
-  if (state.jaPreenchido && resp && resp.avaliacoes) {
-    state.respostas = resp.avaliacoes;
-    document.getElementById('correction-banner').classList.remove('hidden');
-    document.getElementById('submit-btn').disabled = true;
+  if (resp && resp.avaliacoes) {
+    const profAtual = state.user.email;
+    const minhasSub = (resp.submissoes||[]).filter(s => s.professor?.email === profAtual);
+    const meusPacientes = minhasSub.flatMap(s => s.pacientes||[]);
+
+    if (meusPacientes.length > 0) {
+      // Este professor já avaliou — modo correção para os seus pacientes
+      state.modoCorrecao = true;
+      meusPacientes.forEach(nome => { state.respostas[nome] = resp.avaliacoes[nome]; });
+      document.getElementById('correction-banner').classList.remove('hidden');
+      document.getElementById('submit-btn').disabled = true;
+    } else {
+      document.getElementById('correction-banner').classList.add('hidden');
+    }
+
+    // Bloquear pacientes avaliados por OUTROS professores
+    Object.entries(resp.avaliacoes).forEach(([nome, av]) => {
+      if (!meusPacientes.includes(nome)) {
+        const quemAvaliou = resp.pacientes_prof?.[nome] || 'outro professor';
+        state.pacientes_bloqueados[nome] = quemAvaliou;
+        state.respostas[nome] = av;
+      }
+    });
+
+    // Restaurar encaixes de outros professores
+    (resp.outros||[]).forEach(nome => {
+      if (!pacientes.find(p => p.nome === nome)) {
+        pacientes.push({nome, hora:'', encaixe:true});
+      }
+    });
   } else {
     document.getElementById('correction-banner').classList.add('hidden');
   }
 
+  state.pacientes = pacientes;
   renderPacientes();
   document.getElementById('outros-tags').innerHTML = '';
+
+  // Verificar pendência no localStorage
+  const pendencia = localStorage.getItem('pendencia_portal');
+  if (pendencia) {
+    try {
+      const p = JSON.parse(pendencia);
+      if (p.turma === turma && p.data === hoje && p.professor?.email === state.user.email) {
+        if (confirm('Você tem uma avaliação pendente desta turma. Deseja recuperar?')) {
+          Object.entries(p.avaliacoes||{}).forEach(([k,v]) => { state.respostas[k] = v; });
+          const obsEl = document.getElementById('obs-geral');
+          if (obsEl && p.obs) obsEl.value = p.obs;
+          renderPacientes();
+        } else { localStorage.removeItem('pendencia_portal'); }
+      }
+    } catch(e) { localStorage.removeItem('pendencia_portal'); }
+  }
+
   showView('form-view');
 }
 
@@ -716,10 +761,17 @@ const EXEMPLOS_MODULOS = {
 function renderPacientes() {
   const exemploModulo = EXEMPLOS_MODULOS[state.especialidade?.id] || 'Ex: nome do módulo indicado...';
   document.getElementById('patient-list').innerHTML = state.pacientes.map((p,i) => {
-    const resp = state.respostas[p.nome];
-    const det  = state.respostas['__det_'+p.nome] || {};
+    const resp      = state.respostas[p.nome];
+    const det       = state.respostas['__det_'+p.nome] || {};
+    const bloqueado = !!(state.pacientes_bloqueados?.[p.nome]);
+    const quemAv    = state.pacientes_bloqueados?.[p.nome] || '';
+    const lblResp   = resp==='sim'?'✓ Dentro do Perfil':resp==='nao'?'✗ Fora do Perfil':resp==='outros'?'— Não compareceu':'';
+    if (bloqueado) return `<div class="patient-card" style="opacity:.7;background:#F8FAFC">
+      <div class="patient-name">${p.hora?'<span class="patient-hora">'+p.hora+'</span>':''} ${p.nome}${p.encaixe?'<span class="patient-date" style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;margin-left:6px;font-size:11px;font-weight:700">ENCAIXE</span>':''}</div>
+      <div style="font-size:12px;color:#6B7A8D;margin-top:6px">Avaliado por <strong>${quemAv}</strong> — <span style="color:var(--navy)">${lblResp}</span></div>
+    </div>`;
     return `<div class="patient-card">
-      <div class="patient-name">${p.hora?'<span class="patient-hora">'+p.hora+'</span>':''} ${p.nome}${p.data!==dataHoje()?'<span class="patient-date">⏰ '+formatarData(p.data)+'</span>':''}</div>
+      <div class="patient-name">${p.hora?'<span class="patient-hora">'+p.hora+'</span>':''} ${p.nome}${p.encaixe?'<span class="patient-date" style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;margin-left:6px;font-size:11px;font-weight:700">ENCAIXE</span>':''}${p.data&&p.data!==dataHoje()?'<span class="patient-date">⏰ '+formatarData(p.data)+'</span>':''}</div>
       <div class="assessment-btns">
         <button class="assess-btn sim ${resp==='sim'?'active':''}" onclick="avaliar(${i},'sim',this)">✓ Dentro do Perfil</button>
         <button class="assess-btn nao ${resp==='nao'?'active':''}" onclick="avaliar(${i},'nao',this)">✗ Fora do Perfil</button>
@@ -781,8 +833,10 @@ function habilitarCorrecao() {
 function adicionarOutros() {
   const input = document.getElementById('outros-nome-input');
   const nome = input.value.trim(); if (!nome) return;
-  state.outrosPacientes.push(nome); state.respostas[nome] = null;
-  input.value = ''; renderOutrosTags();
+  state.outrosPacientes.push(nome);
+  state.pacientes.push({nome, hora: '', encaixe: true});
+  state.respostas[nome] = null;
+  input.value = ''; renderOutrosTags(); renderPacientes();
 }
 
 function renderOutrosTags() {
@@ -791,39 +845,104 @@ function renderOutrosTags() {
 }
 
 function removerOutros(i) {
-  delete state.respostas[state.outrosPacientes[i]];
-  state.outrosPacientes.splice(i,1); renderOutrosTags();
+  const nome = state.outrosPacientes[i];
+  delete state.respostas[nome];
+  delete state.respostas['__det_'+nome];
+  state.outrosPacientes.splice(i,1);
+  state.pacientes = state.pacientes.filter(p => !(p.encaixe && p.nome === nome));
+  renderOutrosTags(); renderPacientes();
 }
 
-async function enviarFormulario() {
-  const naoAv = state.pacientes.filter(p => !state.respostas[p.nome]);
-  if (naoAv.length && !confirm(naoAv.length+' paciente(s) sem avaliação. Enviar assim mesmo?')) return;
-  const btn = document.getElementById('submit-btn');
-  btn.textContent = 'Enviando...'; btn.disabled = true;
-
-  const hoje = dataHoje();
+function coletarSubmissao() {
   const motivos = {}, indicacoes = {};
-  state.pacientes.forEach((p,i) => {
+  state.pacientes.forEach(p => {
     const det = state.respostas['__det_'+p.nome];
-    if (det) { motivos[p.nome] = det.motivo || ''; indicacoes[p.nome] = det.indica || ''; }
+    if (det) { motivos[p.nome] = det.motivo||''; indicacoes[p.nome] = det.indica||''; }
   });
   const obsGeral = document.getElementById('obs-geral')?.value.trim() || '';
   const avaliacoesFiltradas = {};
-  Object.entries(state.respostas).forEach(([k,v]) => { if (!k.startsWith('__det_')) avaliacoesFiltradas[k] = v; });
-  const payload = {
-    professor: state.user, turma: state.turma, unidade: state.unidade,
-    data: hoje, timestamp: new Date().toISOString(),
-    avaliacoes: avaliacoesFiltradas, motivos, indicacoes,
-    observacao: obsGeral, outros: state.outrosPacientes,
-  };
-  try {
-    const chave = normalizar(state.turma);
-    const existing = await ghGet('data/responses/'+hoje+'/'+chave+'.json');
-    await ghPut('data/responses/'+hoje+'/'+chave+'.json', payload, existing?.sha,
-      'Avaliação: '+state.turma+' — '+state.user.nome);
-  } catch(e) {}
+  Object.entries(state.respostas).forEach(([k,v]) => { if (!k.startsWith('__det_') && v) avaliacoesFiltradas[k] = v; });
+  const pacientes_hora = {};
+  state.pacientes.forEach(p => { if (p.hora) pacientes_hora[p.nome] = p.hora; });
+  return { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora };
+}
 
-  const vals = Object.values(state.respostas);
+function mesclarPayload(existente, novaSubmissao, professor, obsGeral, motivos, indicacoes, pacientes_hora, outrosPacientes) {
+  const base = existente || { avaliacoes:{}, motivos:{}, indicacoes:{}, pacientes_prof:{}, pacientes_hora:{}, submissoes:[], outros:[] };
+  // Pacientes do professor atual que ele avaliou agora
+  const pacientesAvaliados = Object.keys(novaSubmissao);
+  // Merge: existente prevalece, novo só preenche os não avaliados
+  const avaliacoes    = { ...novaSubmissao, ...base.avaliacoes };
+  const motivosMerge  = { ...motivos,       ...base.motivos    };
+  const indicacoesMerge = { ...indicacoes, ...base.indicacoes  };
+  const horaMerge     = { ...pacientes_hora,...base.pacientes_hora };
+  const profMerge     = { ...base.pacientes_prof };
+  pacientesAvaliados.forEach(nome => { if (!profMerge[nome]) profMerge[nome] = professor.nome; });
+  const outrosMerge = [...new Set([...(base.outros||[]), ...outrosPacientes])];
+  const numSub = (base.submissoes||[]).length + 1;
+  const submissoes = [...(base.submissoes||[]), {
+    numero: numSub, professor, timestamp: new Date().toISOString(),
+    pacientes: pacientesAvaliados, observacao: obsGeral, outros: outrosPacientes
+  }];
+  return { turma: state.turma, unidade: state.unidade, data: dataHoje(),
+    avaliacoes, motivos: motivosMerge, indicacoes: indicacoesMerge,
+    pacientes_hora: horaMerge, pacientes_prof: profMerge,
+    outros: outrosMerge, submissoes };
+}
+
+function salvarPendenciaLocal() {
+  const { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
+  localStorage.setItem('pendencia_portal', JSON.stringify({
+    turma: state.turma, unidade: state.unidade, data: dataHoje(),
+    professor: state.user, avaliacoes: avaliacoesFiltradas,
+    motivos, indicacoes, pacientes_hora, outros: state.outrosPacientes, obs: obsGeral
+  }));
+}
+
+async function enviarFormulario(isRetry) {
+  const naoAv = state.pacientes.filter(p => !state.respostas[p.nome] && !p.encaixe);
+  if (!isRetry && naoAv.length && !confirm(naoAv.length+' paciente(s) sem avaliação. Enviar assim mesmo?')) return;
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Enviando...'; btn.disabled = true;
+
+  const { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
+  salvarPendenciaLocal();
+
+  const chave = normalizar(state.turma);
+  const hoje = dataHoje();
+  let tentativas = 0;
+
+  while (tentativas < 3) {
+    tentativas++;
+    try {
+      const existingRaw = await ghGet('data/responses/'+hoje+'/'+chave+'.json');
+      const existente = existingRaw?.content || null;
+      const numSub = ((existente?.submissoes||[]).length) + 1;
+      if (isRetry && numSub > 1) {
+        const obsEl = document.getElementById('obs-geral');
+        if (obsEl) obsEl.placeholder = 'Observação '+numSub+' (sua avaliação será mesclada como Avaliação '+numSub+')';
+      }
+      const merged = mesclarPayload(existente, avaliacoesFiltradas, state.user, obsGeral, motivos, indicacoes, pacientes_hora, state.outrosPacientes);
+      const ok = await ghPut('data/responses/'+hoje+'/'+chave+'.json', merged, existingRaw?.sha, 'Avaliação: '+state.turma+' — '+state.user.nome);
+      if (ok) { localStorage.removeItem('pendencia_portal'); break; }
+      // 409 conflict: aguarda e tenta novamente
+      if (tentativas < 3) await new Promise(r => setTimeout(r, 1500));
+    } catch(e) { break; }
+  }
+
+  // Se após 3 tentativas ainda falhou, mostra botão reenviar
+  const btnFinal = document.getElementById('submit-btn');
+  if (tentativas >= 3) {
+    btnFinal.textContent = '⚠️ Conflito — Reenviar';
+    btnFinal.disabled = false;
+    btnFinal.onclick = () => enviarFormulario(true);
+    const obsEl = document.getElementById('obs-geral');
+    if (obsEl) { obsEl.placeholder = 'Avaliação 2 — Adicione sua observação antes de reenviar'; obsEl.style.borderColor = '#F0DDB0'; }
+    alert('Outro professor enviou ao mesmo tempo. Suas avaliações foram mantidas. Aguarde alguns segundos e clique em Reenviar.');
+    return;
+  }
+
+  const vals = Object.values(avaliacoesFiltradas);
   const sim  = vals.filter(v=>v==='sim').length;
   const nao  = vals.filter(v=>v==='nao').length;
   const falt = vals.filter(v=>v==='outros').length;
@@ -837,7 +956,6 @@ async function enviarFormulario() {
     <div class="success-summary-row"><span>✗ Fora do perfil</span><strong>${nao}</strong></div>
     <div class="success-summary-row"><span>— Não compareceu</span><strong>${falt}</strong></div>
     <div class="success-summary-row"><span>Qualidade da agenda</span><strong>${qual}</strong></div>`;
-
   showView('success-view');
 }
 
@@ -975,14 +1093,12 @@ function datasParaPeriodo(periodo) {
 async function exportarExcel(periodo) {
   const datas = datasParaPeriodo(periodo || 'dia');
   const label_periodo = periodo==='semana'?'semana':periodo==='mes'?'mes':'hoje';
-  let linhas = [['Professor','E-mail','Unidade','Turma','Horário Agendamento','Paciente','Avaliação','Motivo (Fora do Perfil)','Indicação de Módulo','Observações','Data/Hora Envio']];
+  let linhas = [['Unidade','Data/Hora','Turma','Módulo','Professor','Horário','Paciente','Encaixe','Avaliação','Motivo','Indicação de Módulo','Obs 1','Obs 2','Obs 3']];
 
   try {
     for (const data of datas) {
-      const r = await fetch(
-        `${CONFIG.worker_url}/github/data/responses/${data}`,
-        { headers:{ Accept:'application/vnd.github.v3+json' } }
-      );
+      const r = await fetch(`${CONFIG.worker_url}/github/data/responses/${data}`,
+        { headers:{ Accept:'application/vnd.github.v3+json' } });
       if (!r.ok) continue;
       const arquivos = await r.json();
       if (!Array.isArray(arquivos)) continue;
@@ -991,21 +1107,35 @@ async function exportarExcel(periodo) {
         const d = await ghGet('data/responses/'+data+'/'+arq.name);
         if (!d) continue;
         const resp = d.content;
-        const envio      = resp.timestamp ? resp.timestamp.replace('T',' ').substring(0,16) : '';
-        const avaliacoes = resp.avaliacoes || {};
-        const motivos    = resp.motivos    || {};
-        const indicacoes = resp.indicacoes || {};
-        const observacao = resp.observacao || '';
-        const pacientes_hora = resp.pacientes_hora || {};
+
+        // Novo formato com submissoes
+        const submissoes    = resp.submissoes || [];
+        const avaliacoes    = resp.avaliacoes    || {};
+        const motivos       = resp.motivos       || {};
+        const indicacoes    = resp.indicacoes    || {};
+        const pacientes_hora= resp.pacientes_hora|| {};
+        const pacientes_prof= resp.pacientes_prof|| {};
+        const outros        = resp.outros        || [];
+        const modulo        = resp.modulo        || '';
+
+        // Obs por submissão (até 3)
+        const obs1 = submissoes[0]?.observacao || (resp.observacao||'');
+        const obs2 = submissoes[1]?.observacao || '';
+        const obs3 = submissoes[2]?.observacao || '';
+
+        // Data/hora do primeiro envio
+        const envio = submissoes[0]?.timestamp
+          ? submissoes[0].timestamp.replace('T',' ').substring(0,16)
+          : (resp.timestamp ? resp.timestamp.replace('T',' ').substring(0,16) : '');
+
         for (const [paciente, avaliacao] of Object.entries(avaliacoes)) {
-          const lbl       = avaliacao==='sim'?'Dentro do Perfil':avaliacao==='nao'?'Fora do Perfil':avaliacao==='outros'?'Não compareceu':'—';
-          const motivo    = avaliacao==='nao' ? (motivos[paciente]    || '') : '';
-          const indicacao = indicacoes[paciente] || '';
-          const hora_pac  = pacientes_hora[paciente] || '';
-          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', hora_pac, paciente, lbl, motivo, indicacao, observacao, envio]);
-        }
-        for (const extra of (resp.outros||[])) {
-          linhas.push([resp.professor?.nome||'', resp.professor?.email||'', resp.unidade||'', resp.turma||'', '', extra+' (encaixe)', 'Encaixe', '', '', observacao, envio]);
+          const lbl      = avaliacao==='sim'?'Dentro do Perfil':avaliacao==='nao'?'Fora do Perfil':avaliacao==='outros'?'Não compareceu':'—';
+          const motivo   = avaliacao==='nao' ? (motivos[paciente]||'') : '';
+          const indica   = indicacoes[paciente] || '';
+          const hora_pac = pacientes_hora[paciente] || '';
+          const prof     = pacientes_prof[paciente] || resp.professor?.nome || '';
+          const encaixe  = outros.includes(paciente) ? 'Sim' : 'Não';
+          linhas.push([resp.unidade||'', envio, resp.turma||'', modulo, prof, hora_pac, paciente, encaixe, lbl, motivo, indica, obs1, obs2, obs3]);
         }
       }
     }
@@ -1013,8 +1143,8 @@ async function exportarExcel(periodo) {
 
   if (linhas.length <= 1) { alert('Nenhuma avaliação encontrada para o período.'); return; }
 
-  const csv  = 'sep=;\n' + linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
-  const bom  = '﻿';
+  const bom = String.fromCharCode(0xFEFF);
+  const csv = 'sep=;\n' + linhas.map(l => l.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
   const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -1037,6 +1167,5 @@ document.getElementById('prof-senha').addEventListener('keydown', e=>{ if(e.key=
 document.getElementById('admin-password').addEventListener('keydown', e=>{ if(e.key==='Enter') loginAdmin(); });
 document.getElementById('admin-email').addEventListener('keydown', e=>{ if(e.key==='Enter') loginAdmin(); });
 </script>
-<div class="rodape">Desenvolvido por Larissa Carreiro da Silva</div>
 </body>
 </html>
