@@ -897,6 +897,7 @@ function mesclarPayload(existente, novaSubmissao, professor, obsGeral, motivos, 
     pacientes: pacientesAvaliados, observacao: obsGeral, outros: outrosPacientes
   }];
   return { turma: state.turma, unidade: state.unidade, data: dataHoje(),
+    modulo: state.modulo || null,
     avaliacoes, motivos: motivosMerge, indicacoes: indicacoesMerge,
     pacientes_hora: horaMerge, pacientes_prof: profMerge,
     outros: outrosMerge, submissoes };
