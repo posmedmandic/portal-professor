@@ -258,6 +258,7 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
   <div class="form-header">
     <button class="back-btn" style="margin-bottom:8px" onclick="showView('turma-view')">← Voltar</button>
     <div class="form-header-title" id="form-turma-title">—</div>
+    <div id="form-modulo-nome" style="font-size:13px;color:var(--text-secondary,#666);margin-top:2px;margin-bottom:2px;font-style:italic"></div>
     <div class="form-header-date" id="form-date">—</div>
   </div>
   <div class="app-main" style="padding-top:0">
@@ -425,7 +426,7 @@ let DADOS = {
 };
 
 let state = {
-  user: null, unidade: null, especialidade: null, turma: null,
+  user: null, unidade: null, especialidade: null, turma: null, modulo: null,
   pacientes: [], respostas: {}, outrosPacientes: [],
   jaPreenchido: false, modoCorrecao: false,
 };
@@ -541,7 +542,7 @@ async function entrarNoPortal(nome, email) {
 
 function mostrarErro(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 function logout() {
-  state = { user:null, unidade:null, especialidade:null, turma:null, pacientes:[], respostas:{}, outrosPacientes:[], jaPreenchido:false, modoCorrecao:false };
+  state = { user:null, unidade:null, especialidade:null, turma:null, modulo:null, pacientes:[], respostas:{}, outrosPacientes:[], jaPreenchido:false, modoCorrecao:false };
   document.getElementById('prof-name').value = '';
   document.getElementById('prof-email').value = '';
   showView('login-view');
@@ -645,7 +646,13 @@ async function carregarPacientes(turma, data) {
   try {
     const d = await ghGet('data/patients/'+data+'.json');
     if (!d) return null;
-    return d.content[normalizar(turma)] || null;
+    const entrada = d.content[normalizar(turma)];
+    if (!entrada) return null;
+    // suporta formato novo { modulo, pacientes[] } e formato antigo (array)
+    if (Array.isArray(entrada)) return entrada;
+    state.modulo = entrada.modulo || null;
+    document.getElementById('form-modulo-nome').textContent = entrada.modulo ? '📋 ' + entrada.modulo : '';
+    return entrada.pacientes || null;
   } catch(e) { return null; }
 }
 
@@ -741,6 +748,7 @@ async function enviarFormulario() {
   const hoje = dataHoje();
   const payload = {
     professor: state.user, turma: state.turma, unidade: state.unidade,
+    modulo: state.modulo || null,
     data: hoje, timestamp: new Date().toISOString(),
     avaliacoes: state.respostas, outros: state.outrosPacientes,
   };
