@@ -473,10 +473,15 @@ function showView(id) {
 
 // ── GitHub API ──
 async function ghGet(path) {
-  const r = await fetch(
-    `${CONFIG.worker_url}/github/${path}`,
-    { headers: { Accept: 'application/vnd.github.v3+json' } }
-  );
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  let r;
+  try {
+    r = await fetch(
+      `${CONFIG.worker_url}/github/${path}`,
+      { headers: { Accept: 'application/vnd.github.v3+json' }, signal: ctrl.signal }
+    );
+  } finally { clearTimeout(timer); }
   if (!r.ok) return null;
   const d = await r.json();
   const bytes = Uint8Array.from(atob(d.content.replace(/\n/g,'')), c => c.charCodeAt(0));
