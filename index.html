@@ -918,21 +918,8 @@ async function enviarFormulario(isRetry) {
   btn.textContent = 'Enviando...'; btn.disabled = true;
 
   const hoje = dataHoje();
-  const payload = {
-    professor: state.user, turma: state.turma, unidade: state.unidade,
-    modulo: state.modulo || null,
-    data: hoje, timestamp: new Date().toISOString(),
-    avaliacoes: state.respostas, outros: state.outrosPacientes,
-  };
-  try {
-    const chave = normalizar(state.turma);
-    const existing = await ghGet('data/responses/'+hoje+'/'+chave+'.json');
-    await ghPut('data/responses/'+hoje+'/'+chave+'.json', payload, existing?.sha,
-      'Avaliação: '+state.turma+' — '+state.user.nome);
-  } catch(e) {}
-
   const chave = normalizar(state.turma);
-  const hoje = dataHoje();
+  const { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
   let tentativas = 0;
 
   while (tentativas < 3) {
