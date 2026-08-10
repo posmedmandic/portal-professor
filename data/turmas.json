@@ -1,0 +1,213 @@
+{
+  "neuropediatria": {
+    "nome": "Neuropediatria",
+    "icon": "🧩",
+    "turmas": {
+      "SP": [],
+      "CPS": [],
+      "BSB": [],
+      "Digital": []
+    }
+  },
+  "pediatria": {
+    "nome": "Pediatria",
+    "icon": "👶",
+    "turmas": {
+      "SP": [
+        "Pediatria T1"
+      ],
+      "CPS": [
+        "Pediatria T4",
+        "Pediatria T3",
+        "Pediatria T5",
+        "Pediatria T1",
+        "Pediatria T2",
+        "Pediatria T6"
+      ],
+      "BSB": [],
+      "Digital": []
+    }
+  },
+  "dermato_cirurgica": {
+    "nome": "Dermatologia Cirúrgica",
+    "icon": "🩺",
+    "turmas": {
+      "SP": [],
+      "CPS": [],
+      "BSB": [],
+      "Digital": []
+    }
+  },
+  "dermato": {
+    "nome": "Dermatologia",
+    "icon": "🔬",
+    "turmas": {
+      "SP": [
+        "Dermatologia T18",
+        "Dermatologia T10",
+        "Dermatologia T17",
+        "Dermatologia T7",
+        "Dermatologia Cirúrgica T1",
+        "Dermatologia T11",
+        "Dermatologia T14",
+        "Dermatologia T4",
+        "Dermatologia T13",
+        "Dermatologia T5",
+        "Dermatologia T9",
+        "Dermatologia T8",
+        "Dermatologia T15",
+        "Dermatologia T21",
+        "Dermatologia T6",
+        "Dermatologia T20",
+        "Dermatologia T19",
+        "Dermatologia T12",
+        "Dermatologia T16",
+        "Dermatologia T22",
+        "Dermatologia T23",
+        "Dermatologia Cirúrgica T2"
+      ],
+      "CPS": [
+        "Dermatologia T6",
+        "Dermatologia T9",
+        "Dermatologia T5",
+        "Dermatologia T4",
+        "Dermatologia T7",
+        "Dermatologia T3",
+        "Dermatologia T8",
+        "Dermatologia T2",
+        "Dermatologia T10"
+      ],
+      "BSB": [
+        "Dermatologia T2",
+        "Dermatologia T3",
+        "Dermatologia T1",
+        "Dermatologia T4"
+      ],
+      "Digital": []
+    }
+  },
+  "tricologia": {
+    "nome": "Tricologia",
+    "icon": "💇",
+    "turmas": {
+      "SP": [
+        "Tricologia T2",
+        "Tricologia T1",
+        "Tricologia T3"
+      ],
+      "CPS": [],
+      "BSB": [],
+      "Digital": []
+    }
+  },
+  "oftalmo": {
+    "nome": "Oftalmologia",
+    "icon": "👁️",
+    "turmas": {
+      "SP": [
+        "Oftalmologia T5",
+        "Oftalmologia T4",
+        "Oftalmologia T3",
+        "Oftalmologia T6",
+        "Oftalmologia T2",
+        "Oftalmologia T7"
+      ],
+      "CPS": [
+        "Oftalmologia T1",
+        "Oftalmologia T2",
+        "Oftalmologia T3"
+      ],
+      "BSB": [
+        "Oftalmologia T1",
+        "Oftalmologia T2"
+      ],
+      "Digital": []
+    }
+  },
+  "psiquiatria_infantil": {
+    "nome": "Psiquiatria Infantil",
+    "icon": "🧒",
+    "turmas": {
+      "SP": [],
+      "CPS": [],
+      "BSB": [],
+      "Digital": []
+    }
+  },
+  "psiquiatria": {
+    "nome": "Psiquiatria",
+    "icon": "🧠",
+    "turmas": {
+      "SP": [
+        "Psiquiatria T2",
+        "Psiquiatria T3",
+        "Psiquiatria Infantil",
+        "Psiquiatria T4",
+        "Psiquiatria T5"
+      ],
+      "CPS": [
+        "Psiquiatria T2",
+        "Psiquiatria T4",
+        "Psiquiatria T3"
+      ],
+      "BSB": [
+        "Psiquiatria T1"
+      ],
+      "Digital": [
+        "Psiquiatria T2",
+        "Psiquiatria T3",
+        "Psiquiatria T5",
+        "Psiquiatria T1",
+        "Psiquiatria T4",
+        "Psiquiatria T6",
+        "Psiquiatria T7"
+      ]
+    }
+  },
+  "endocrino": {
+    "nome": "Endocrinologia",
+    "icon": "⚗️",
+    "turmas": {
+      "SP": [
+        "Endocrinologia T4",
+        "Endocrinologia T3",
+        "Endocrinologia T2",
+        "Endocrinologia T5"
+      ],
+      "CPS": [
+        "Endocrinologia T3",
+        "Endocrinologia T1",
+        "Endocrinologia T2"
+      ],
+      "BSB": [
+        "Endocrinologia T1"
+      ],
+      "Digital": [
+        "Endocrinologia T3",
+        "Endocrinologia T4",
+        "Endocrinologia T5",
+        "Endocrinologia T6",
+        "Endocrinologia T7",
+        "Endocrinologia T1",
+        "Endocrinologia T2",
+        "Endocrinologia T8",
+        "Endocrinologia T9"
+      ]
+    }
+  },
+  "nutrologia": {
+    "nome": "Nutrologia",
+    "icon": "🥗",
+    "turmas": {
+      "SP": [
+        "Nutrologia T1",
+        "Nutrologia T2"
+      ],
+      "CPS": [
+        "Nutrologia T1"
+      ],
+      "BSB": [],
+      "Digital": []
+    }
+  }
+}
