@@ -99,6 +99,9 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 .fora-perfil-detail label{font-size:12px;font-weight:600;color:#721C24;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block}
 .fora-perfil-detail input{width:100%;padding:9px 12px;border:1.5px solid #F5C6CB;border-radius:8px;font-size:13px;color:var(--text)}
 .fora-perfil-detail input:focus{outline:none;border-color:var(--error)}
+.fora-perfil-detail .indica-opcao{display:flex;align-items:flex-start;gap:10px;padding:5px 0;margin:0;cursor:pointer;font-size:13px;font-weight:400;color:var(--text);text-transform:none;letter-spacing:normal;line-height:1.35;text-align:left}
+.fora-perfil-detail .indica-opcao input{width:16px;height:16px;flex:0 0 16px;margin:1px 0 0;padding:0;accent-color:var(--navy)}
+.fora-perfil-detail .indica-ajuda{font-size:12px;color:var(--text-light);margin:-2px 0 8px;line-height:1.4}
 .outros-section{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border:2px dashed #DDE3EC;margin-bottom:20px}
 .outros-section-title{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:12px}
 .outros-input-row{display:flex;gap:10px;align-items:center}
@@ -763,6 +766,37 @@ const EXEMPLOS_MODULOS = {
   neuropediatria: 'Ex: Pediatria, Neurologia Adulto, Psiquiatria Infantil...',
 };
 
+// Módulos em que a indicação aparece também em "Dentro do Perfil" (comparação pelo começo do nome)
+const MODULOS_INDICA_DENTRO = ['avaliacao_estetica', 'dermatoses_inesteticas', 'dermatose_inestetica',
+                               'dermatoses_inestesicas', 'farmacologia_dermatologica'];
+function indicaNoDentro() {
+  const m = normalizar(state.modulo || '');
+  return MODULOS_INDICA_DENTRO.some(p => m.startsWith(p));
+}
+const TEXTOS_INDICA = {
+  sim: { titulo: 'Para quais módulos este paciente tem perfil?',
+         ajuda: 'De acordo com a sua avaliação, marque os módulos ou especialidades indicados para este paciente. Pode marcar mais de um.' },
+  nao: { titulo: 'Para quais módulos este paciente tem indicação?',
+         ajuda: 'Como este paciente não tem perfil para o módulo de hoje, marque, de acordo com a sua avaliação, os módulos ou especialidades em que ele se encaixa. Pode marcar mais de um.' },
+};
+function textosIndica(resp) { return TEXTOS_INDICA[resp === 'nao' ? 'nao' : 'sim']; }
+function mostrarDetalhe(resp) { return resp === 'nao' || (resp === 'sim' && indicaNoDentro()); }
+
+const MODULOS_LISTA = ['Avaliação Estética e planejamento terapêutico','Técnicas de aplicação de Toxina Botulínica na face','Outras técnicas de aplicação toxina (hiperidrose, cefaleia, blefarospasmo, paralisia facial)','Farmacologia dermatológica e estética','Técnicas de preenchimento com ácido hialurônico na face I','Técnicas de preenchimento com ácido hialurônico lábios, olheiras e queixo II','Dermatoses inestéticas I: melasma, discromias e acne','Dermatoses inestéticas II: fotoenvelhecimento, rosácea, cicatriz de acne','Laserterapia em medicina estética I','Laserterapia em medicina estética II','Peelings químicos','Tratamentos corporais para flacidez, gordura localizada e estrias','Tratamentos estéticos corporais/ gluteos','Fios regenerativos: sustentação, preenchimento e estímulo de colágeno','Tratamentos combinado estética facial: laser, fios e injetáveis combinados','Tratamentos capilares','Estética genital feminina','Técnicas de rejuvenescimento regenerativo'];
+const CONSULTAS_LISTA = ['Consulta com Oftalmologista','Consulta com Endocrinologista','Consulta com Psiquiatra','Consulta com Nutrólogo','Consulta com Dermatologia Cirúrgica','Consulta com Tricologia','Consulta com Pediatria','Consulta com Neuropediatria','Consulta com Psiquiatria Infantil','Consulta com Ginecologia','Consulta com TDAH','Consulta com Estética Íntima','Consulta com Medicina do Esporte'];
+const MODULOS_OFTALMO = ['Introdução à Oftalmologia I','Refração e Visão Subnormal I','Doenças Externas e Diagnóstico Diferencial de Olho Vermelho I','Plástica Ocular, Vias Lacrimais e Órbita I','Estrabismo I','Córnea I','Catarata I','Glaucoma I','Retina e Vítreo I','Úvea, Tumor e Neuroftalmo I','Oftalmologia cirúrgica I','Introdução à Oftalmologia II','Refração e Visão Subnormal II','Doenças Externas e Diagnóstico Diferencial de Olho Vermelho II','Plástica Ocular, Vias Lacrimais e Órbita II','Estrabismo II','Córnea II','Catarata II','Glaucoma II','Retina e Vítreo II','Úvea, Tumor e Neuroftalmo II','Oftalmologia cirúrgica II'];
+const MODULOS_ENDO = ['Doenças da Tireoide','Câncer de Tireoide e Tratamento Farmacológico do DM2','Obesidade e Síndrome Metabólica','Obesidade e Cirurgia Bariátrica','Diabetes Mellitus Tipo 1 e Tipo 2','Diabetes Mellitus Tipo 1 e Tecnologias','Diabetes gestacional e outros tipos de diabetes','Urgências em diabetes','Risco Cardiometabólico, Dislipidemias e Complicações do Diabetes','Interpretação de Exames Laboratoriais em Endocrinologia','Testes Funcionais e Métodos de Imagem em Endocrinologia','Endocrinologia da Criança e do Adolescente','Endocrinologia da Mulher e Gestação','Reposição hormonal no climatério, Sexualidade','Endocrinologia do Homem e Transgeneridade','Hipogonadismo masculino','Endocrinologia do Envelhecimento','Hipotálamo e Hipófise','Adenomas hipofisários','Prolactinomas, Acromegalia','Hipopituitarismo','Doenças da Suprarrenal','Síndrome de Cushing','Doenças das supra-renais e Síndrome dos ovários policísticos (SOP)','Neoplasias endócrinas múltiplas, Feocromocitoma','Endocrinopatias Complexas e Síndromes Hereditárias','Distúrbios do Metabolismo Ósseo e Mineral','Endocrinologia da Composição Corporal e Distúrbios do Tecido Adiposo','Endocrinologia do Estilo de Vida','Endocrinologia Esportiva','Endocrinologia Comportamental, Nutrição e Sono','Terapia Hormonal Baseada em Evidências','Tecnologia Aplicada à Endocrinologia','Urgências Endocrinológicas','Endocrinologia Digital: IA, Gestão e Empreendedorismo Médico'];
+const MODULOS_DERM_CIR = ['Fundamentos da Cirurgia Dermatológica e Anatomia Aplicada','História e fundamentos da cirurgia dermatológica','Dermatoscopia e Diagnóstico das Neoplasias Cutâneas','Lesões Benignas: Exérese e Sutura Básica','Lesões Benignas: Técnicas Cirúrgicas','Técnicas de Biópsia, Shaving e Correção de Furo de Orelha','Lesões Pré-Malignas e Métodos Destrutivos','Lesões Malignas: Tratamento e Reconstrução','Cirurgia do Aparelho Ungueal','Tratamento de unhas encravadas','Tratamento Cirúrgico de Cicatrizes','Suturas Especiais e Técnicas de Reconstrução','Cirurgias Estéticas e Avaliação de Risco','Gestão Estratégica do Consultório Dermatológico'];
+// Indicação: módulos da especialidade + consultas com as outras especialidades. Contraindicação: só Dermatologia.
+function listasDe(espId) {
+  const consultas = esp => [...CONSULTAS_LISTA, 'Consulta com Dermatologia'].filter(c => !esp || !c.includes(esp));
+  if (espId === 'oftalmo')           return { indica: [...MODULOS_OFTALMO, ...consultas('Oftalmolog')], contra: null };
+  if (espId === 'endocrino')         return { indica: [...MODULOS_ENDO, ...consultas('Endocrinolog')], contra: null };
+  if (espId === 'dermato_cirurgica') return { indica: [...MODULOS_DERM_CIR, ...consultas('Dermatologia Cirúrgica')], contra: null };
+  return { indica: [...MODULOS_LISTA, ...CONSULTAS_LISTA], contra: MODULOS_LISTA };
+}
+const marcado = (lista, m) => (lista || '').split('; ').includes(m) ? 'checked' : '';
+
 function renderPacientes() {
   const exemploModulo = EXEMPLOS_MODULOS[state.especialidade?.id] || 'Ex: nome do módulo indicado...';
   document.getElementById('patient-list').innerHTML = state.pacientes.map((p,i) => {
@@ -782,18 +816,29 @@ function renderPacientes() {
         <button class="assess-btn nao ${resp==='nao'?'active':''}" onclick="avaliar(${i},'nao',this)">✗ Fora do Perfil</button>
         <button class="assess-btn outros ${resp==='outros'?'active':''}" onclick="avaliar(${i},'outros',this)">— Não compareceu</button>
       </div>
-      <div class="fora-perfil-detail ${resp==='nao'?'visible':''}" id="det-${i}">
-        <div>
+      <div class="fora-perfil-detail ${mostrarDetalhe(resp)?'visible':''}" id="det-${i}">
+        <div id="det-motivo-box-${i}" style="${resp==='nao'?'':'display:none'}">
           <label>Motivo (obrigatório)</label>
           <input type="text" id="det-motivo-${i}" placeholder="Ex: paciente sem queda de cabelo ativa..." value="${det.motivo||''}" oninput="salvarDetalhe(${i})">
         </div>
         <div>
-          <label>Indica para outro módulo? (opcional — pode marcar mais de um)</label>
+          <label id="det-indica-titulo-${i}">${textosIndica(resp).titulo}</label>
+          <div class="indica-ajuda" id="det-indica-ajuda-${i}">${textosIndica(resp).ajuda}</div>
           <div id="det-indica-${i}" style="border:1.5px solid #F5C6CB;border-radius:8px;padding:10px 12px;background:#fff;font-size:13px;max-height:180px;overflow-y:auto">
-            ${['Avaliação Estética e planejamento terapêutico','Técnicas de aplicação de Toxina Botulínica na face','Outras técnicas de aplicação toxina (hiperidrose, cefaleia, blefarospasmo, paralisia facial)','Farmacologia dermatológica e estética','Técnicas de preenchimento com ácido hialurônico na face I','Técnicas de preenchimento com ácido hialurônico lábios, olheiras e queixo II','Dermatoses inestéticas I: melasma, discromias e acne','Dermatoses inestéticas II: fotoenvelhecimento, rosácea, cicatriz de acne','Laserterapia em medicina estética I','Laserterapia em medicina estética II','Peelings químicos','Tratamentos corporais para flacidez, gordura localizada e estrias','Tratamentos estéticos corporais/ gluteos','Fios regenerativos: sustentação, preenchimento e estímulo de colágeno','Tratamentos combinado estética facial: laser, fios e injetáveis combinados','Tratamentos capilares','Estética genital feminina','Técnicas de rejuvenescimento regenerativo','Consulta com Oftalmologista','Consulta com Endocrinologista','Consulta com Psiquiatra','Consulta com Nutrólogo','Consulta com Dermatologia Cirúrgica'].map(m=>`<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer"><input type="checkbox" value="${m}" onchange="salvarDetalhe(${i})" style="accent-color:var(--navy)"> ${m}</label>`).join('')}
-            <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer"><input type="checkbox" id="det-outros-check-${i}" onchange="toggleOutrosModulo(${i})" style="accent-color:var(--navy)"> Outros</label>
+            ${listasDe(state.especialidade?.id).indica.map(m=>`<label class="indica-opcao"><input type="checkbox" value="${m}" ${marcado(det.indica, m)} onchange="salvarDetalhe(${i})"><span>${m}</span></label>`).join('')}
+            <label class="indica-opcao"><input type="checkbox" id="det-outros-check-${i}" onchange="toggleOutrosModulo(${i})"><span>Outros</span></label>
             <input type="text" id="det-outros-txt-${i}" placeholder="Descreva o módulo..." oninput="salvarDetalhe(${i})" style="display:none;width:100%;margin-top:6px;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
           </div>
+        </div>
+        ${listasDe(state.especialidade?.id).contra ? `
+        <div>
+          <label>Contraindicação: de quais módulos este paciente <strong style="font-weight:800;text-decoration:underline;text-underline-offset:3px">não</strong> deve participar?</label>
+          <div class="indica-ajuda">De acordo com a sua avaliação, marque os módulos que não são indicados para este paciente. Opcional, pode marcar mais de um.</div>
+          <div id="det-contra-${i}" style="border:1.5px solid #F5C6CB;border-radius:8px;padding:10px 12px;background:#fff;font-size:13px;max-height:180px;overflow-y:auto">
+            ${listasDe(state.especialidade?.id).contra.map(m=>`<label class="indica-opcao"><input type="checkbox" value="${m}" ${marcado(det.contra, m)} onchange="salvarDetalhe(${i})"><span>${m}</span></label>`).join('')}
+            <label class="indica-opcao"><input type="checkbox" id="det-contra-outros-check-${i}" onchange="toggleOutrosContra(${i})"><span>Outros</span></label>
+            <input type="text" id="det-contra-outros-txt-${i}" placeholder="Descreva o módulo..." oninput="salvarDetalhe(${i})" style="display:none;width:100%;margin-top:6px;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          </div>` : ''}
         </div>
       </div>
     </div>`;
@@ -806,7 +851,13 @@ function avaliar(idx, valor, btn) {
   btn.closest('.patient-card').querySelectorAll('.assess-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   const det = document.getElementById('det-'+idx);
-  if (det) det.classList.toggle('visible', valor === 'nao');
+  if (det) det.classList.toggle('visible', mostrarDetalhe(valor));
+  const motivoBox = document.getElementById('det-motivo-box-'+idx);
+  if (motivoBox) motivoBox.style.display = valor === 'nao' ? '' : 'none';
+  const titulo = document.getElementById('det-indica-titulo-'+idx);
+  const ajuda  = document.getElementById('det-indica-ajuda-'+idx);
+  if (titulo) titulo.textContent = textosIndica(valor).titulo;
+  if (ajuda)  ajuda.textContent  = textosIndica(valor).ajuda;
 }
 
 function toggleOutrosModulo(idx) {
@@ -814,6 +865,22 @@ function toggleOutrosModulo(idx) {
   const txt   = document.getElementById('det-outros-txt-'+idx);
   if (txt) txt.style.display = check?.checked ? 'block' : 'none';
   salvarDetalhe(idx);
+}
+
+function toggleOutrosContra(idx) {
+  const check = document.getElementById('det-contra-outros-check-'+idx);
+  const txt   = document.getElementById('det-contra-outros-txt-'+idx);
+  if (txt) txt.style.display = check?.checked ? 'block' : 'none';
+  salvarDetalhe(idx);
+}
+
+function lerMarcados(idx, prefixo, idOutros, idTxt) {
+  const box = document.getElementById(prefixo+idx);
+  const lista = [];
+  if (box) box.querySelectorAll('input[type=checkbox]:not(#'+idOutros+idx+')').forEach(cb => { if (cb.checked) lista.push(cb.value); });
+  const outros = document.getElementById(idOutros+idx), txt = document.getElementById(idTxt+idx);
+  if (outros?.checked && txt?.value.trim()) lista.push(txt.value.trim());
+  return lista.join('; ');
 }
 
 function salvarDetalhe(idx) {
@@ -826,7 +893,8 @@ function salvarDetalhe(idx) {
   const outrosCheck = document.getElementById('det-outros-check-'+idx);
   const outrosTxt   = document.getElementById('det-outros-txt-'+idx);
   if (outrosCheck?.checked && outrosTxt?.value.trim()) modulos.push(outrosTxt.value.trim());
-  state.respostas['__det_'+nome] = { motivo, indica: modulos.join('; ') };
+  const contra = lerMarcados(idx, 'det-contra-', 'det-contra-outros-check-', 'det-contra-outros-txt-');
+  state.respostas['__det_'+nome] = { motivo, indica: modulos.join('; '), contra };
 }
 
 function habilitarCorrecao() {
@@ -859,20 +927,20 @@ function removerOutros(i) {
 }
 
 function coletarSubmissao() {
-  const motivos = {}, indicacoes = {};
+  const motivos = {}, indicacoes = {}, contraindicacoes = {};
   state.pacientes.forEach(p => {
     const det = state.respostas['__det_'+p.nome];
-    if (det) { motivos[p.nome] = det.motivo||''; indicacoes[p.nome] = det.indica||''; }
+    if (det) { motivos[p.nome] = det.motivo||''; indicacoes[p.nome] = det.indica||''; if (det.contra) contraindicacoes[p.nome] = det.contra; }
   });
   const obsGeral = document.getElementById('obs-geral')?.value.trim() || '';
   const avaliacoesFiltradas = {};
   Object.entries(state.respostas).forEach(([k,v]) => { if (!k.startsWith('__det_') && v) avaliacoesFiltradas[k] = v; });
   const pacientes_hora = {};
   state.pacientes.forEach(p => { if (p.hora) pacientes_hora[p.nome] = p.hora; });
-  return { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora };
+  return { motivos, indicacoes, contraindicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora };
 }
 
-function mesclarPayload(existente, novaSubmissao, professor, obsGeral, motivos, indicacoes, pacientes_hora, outrosPacientes) {
+function mesclarPayload(existente, novaSubmissao, professor, obsGeral, motivos, indicacoes, pacientes_hora, outrosPacientes, contraindicacoes = {}) {
   const base = existente || { avaliacoes:{}, motivos:{}, indicacoes:{}, pacientes_prof:{}, pacientes_hora:{}, submissoes:[], outros:[] };
   // Pacientes do professor atual que ele avaliou agora
   const pacientesAvaliados = Object.keys(novaSubmissao);
@@ -880,6 +948,7 @@ function mesclarPayload(existente, novaSubmissao, professor, obsGeral, motivos, 
   const avaliacoes    = { ...novaSubmissao, ...base.avaliacoes };
   const motivosMerge  = { ...motivos,       ...base.motivos    };
   const indicacoesMerge = { ...indicacoes, ...base.indicacoes  };
+  const contraMerge     = { ...contraindicacoes, ...(base.contraindicacoes || {}) };
   const horaMerge     = { ...pacientes_hora,...base.pacientes_hora };
   const profMerge     = { ...base.pacientes_prof };
   pacientesAvaliados.forEach(nome => { if (!profMerge[nome]) profMerge[nome] = professor.nome; });
@@ -891,17 +960,17 @@ function mesclarPayload(existente, novaSubmissao, professor, obsGeral, motivos, 
   }];
   return { turma: state.turma, unidade: state.unidade, data: dataHoje(),
     modulo: state.modulo || null,
-    avaliacoes, motivos: motivosMerge, indicacoes: indicacoesMerge,
+    avaliacoes, motivos: motivosMerge, indicacoes: indicacoesMerge, contraindicacoes: contraMerge,
     pacientes_hora: horaMerge, pacientes_prof: profMerge,
     outros: outrosMerge, submissoes };
 }
 
 function salvarPendenciaLocal() {
-  const { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
+  const { motivos, indicacoes, contraindicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
   localStorage.setItem('pendencia_portal', JSON.stringify({
     turma: state.turma, unidade: state.unidade, data: dataHoje(),
     professor: state.user, avaliacoes: avaliacoesFiltradas,
-    motivos, indicacoes, pacientes_hora, outros: state.outrosPacientes, obs: obsGeral
+    motivos, indicacoes, contraindicacoes, pacientes_hora, outros: state.outrosPacientes, obs: obsGeral
   }));
 }
 
@@ -913,7 +982,7 @@ async function enviarFormulario(isRetry) {
 
   const hoje = dataHoje();
   const chave = normalizar(state.turma);
-  const { motivos, indicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
+  const { motivos, indicacoes, contraindicacoes, obsGeral, avaliacoesFiltradas, pacientes_hora } = coletarSubmissao();
   let tentativas = 0;
 
   while (tentativas < 3) {
@@ -926,7 +995,7 @@ async function enviarFormulario(isRetry) {
         const obsEl = document.getElementById('obs-geral');
         if (obsEl) obsEl.placeholder = 'Observação '+numSub+' (sua avaliação será mesclada como Avaliação '+numSub+')';
       }
-      const merged = mesclarPayload(existente, avaliacoesFiltradas, state.user, obsGeral, motivos, indicacoes, pacientes_hora, state.outrosPacientes);
+      const merged = mesclarPayload(existente, avaliacoesFiltradas, state.user, obsGeral, motivos, indicacoes, pacientes_hora, state.outrosPacientes, contraindicacoes);
       const ok = await ghPut('data/responses/'+hoje+'/'+chave+'.json', merged, existingRaw?.sha, 'Avaliação: '+state.turma+' — '+state.user.nome);
       if (ok) { localStorage.removeItem('pendencia_portal'); break; }
       // 409 conflict: aguarda e tenta novamente
@@ -1087,7 +1156,7 @@ function datasParaPeriodo(periodo) {
 async function exportarExcel(periodo) {
   const datas = datasParaPeriodo(periodo || 'dia');
   const label_periodo = periodo==='semana'?'semana':periodo==='mes'?'mes':'hoje';
-  let linhas = [['Unidade','Data/Hora','Turma','Módulo','Professor','Horário','Paciente','Encaixe','Avaliação','Motivo','Indicação de Módulo','Obs 1','Obs 2','Obs 3']];
+  let linhas = [['Unidade','Data/Hora','Turma','Módulo','Professor','Horário','Paciente','Encaixe','Avaliação','Motivo','Indicação de Módulo','Contraindicação de Módulo','Obs 1','Obs 2','Obs 3']];
 
   try {
     for (const data of datas) {
@@ -1107,6 +1176,7 @@ async function exportarExcel(periodo) {
         const avaliacoes    = resp.avaliacoes    || {};
         const motivos       = resp.motivos       || {};
         const indicacoes    = resp.indicacoes    || {};
+        const contraind     = resp.contraindicacoes || {};
         const pacientes_hora= resp.pacientes_hora|| {};
         const pacientes_prof= resp.pacientes_prof|| {};
         const outros        = resp.outros        || [];
@@ -1129,7 +1199,7 @@ async function exportarExcel(periodo) {
           const hora_pac = pacientes_hora[paciente] || '';
           const prof     = pacientes_prof[paciente] || resp.professor?.nome || '';
           const encaixe  = outros.includes(paciente) ? 'Sim' : 'Não';
-          linhas.push([resp.unidade||'', envio, resp.turma||'', modulo, prof, hora_pac, paciente, encaixe, lbl, motivo, indica, obs1, obs2, obs3]);
+          linhas.push([resp.unidade||'', envio, resp.turma||'', modulo, prof, hora_pac, paciente, encaixe, lbl, motivo, indica, contraind[paciente] || '', obs1, obs2, obs3]);
         }
       }
     }
