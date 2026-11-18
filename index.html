@@ -354,7 +354,6 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 </div><script>
 const CONFIG = {
   worker_url:     'https://portal-posmedica.larissa-carreiro.workers.dev',
-  admin_password: 'posmedica2026',
 };
 
 // Turmas — carregadas dinamicamente do GitHub, fallback fixo se offline
@@ -471,6 +470,19 @@ function showView(id) {
   window.scrollTo(0,0);
 }
 
+// ── Porteiro (login conferido no servidor; crachá válido por 12h) ──
+let TOKEN = null;
+function comCracha(h = {}) { return TOKEN ? { ...h, Authorization: 'Bearer ' + TOKEN } : h; }
+async function api(caminho, metodo = 'GET', corpo) {
+  const r = await fetch(`${CONFIG.worker_url}/${caminho}`, {
+    method: metodo, headers: comCracha({ 'Content-Type': 'application/json' }),
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+  });
+  let d = {}; try { d = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(d.erro || 'Erro de comunicação. Tente novamente.');
+  return d;
+}
+
 // ── GitHub API ──
 async function ghGet(path) {
   const ctrl = new AbortController();
@@ -479,7 +491,7 @@ async function ghGet(path) {
   try {
     r = await fetch(
       `${CONFIG.worker_url}/github/${path}`,
-      { headers: { Accept: 'application/vnd.github.v3+json' }, signal: ctrl.signal }
+      { headers: comCracha({ Accept: 'application/vnd.github.v3+json' }), signal: ctrl.signal }
     );
   } finally { clearTimeout(timer); }
   if (!r.ok) return null;
@@ -493,7 +505,7 @@ async function ghPut(path, content, sha, message) {
   if (sha) body.sha = sha;
   const r = await fetch(
     `${CONFIG.worker_url}/github/${path}`,
-    { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }
+    { method:'PUT', headers:comCracha({ 'Content-Type':'application/json' }), body:JSON.stringify(body) }
   );
   return r.ok;
 }
@@ -509,34 +521,22 @@ async function fazerLogin() {
   errEl.style.display = 'none';
   btn.textContent = 'Verificando...'; btn.disabled = true;
 
-  let registro = null;
+  let sessao;
   try {
-    const dados = await ghGet('data/emails.json');
-    if (dados && dados.content.length) {
-      registro = dados.content.find(e => e.email.toLowerCase() === email);
-      if (!registro) {
-        btn.textContent = 'Entrar'; btn.disabled = false;
-        mostrarErro(errEl, 'E-mail não autorizado. Solicite acesso ao administrador.');
-        return;
-      }
-      if (registro.senha !== senha) {
-        btn.textContent = 'Entrar'; btn.disabled = false;
-        mostrarErro(errEl, 'Senha incorreta.');
-        return;
-      }
-    }
-    // se arquivo vazio ou inexistente = modo demo, aceita qualquer coisa
-  } catch(e) { /* modo demo */ }
-
+    sessao = await api('auth/login', 'POST', { email, senha });
+  } catch (e) {
+    btn.textContent = 'Entrar'; btn.disabled = false;
+    mostrarErro(errEl, e.message);
+    return;
+  }
   btn.textContent = 'Entrar'; btn.disabled = false;
 
-  const nome = registro ? registro.nome : email;
-  state.user = { nome, email };
-  state._registroSha = null;
+  TOKEN = sessao.token;
+  state.user = { nome: sessao.nome, email: sessao.email };
+  state._registroDados = { admin: sessao.admin };
 
-  // Primeiro acesso: pedir para criar senha própria
-  if (registro && registro.primeiro_acesso) {
-    state._registroDados = registro;
+  // Primeiro acesso (ou senha antiga): pedir para criar senha própria
+  if (sessao.primeiro_acesso) {
     document.getElementById('nova-senha').value = '';
     document.getElementById('confirma-senha').value = '';
     document.getElementById('modal-erro').style.display = 'none';
@@ -544,7 +544,7 @@ async function fazerLogin() {
     return;
   }
 
-  entrarNoPortal(nome, email, registro && registro.admin);
+  entrarNoPortal(sessao.nome, sessao.email, sessao.admin);
 }
 
 async function salvarNovaSenha() {
@@ -556,17 +556,9 @@ async function salvarNovaSenha() {
   if (nova !== confirma)     { mostrarErro(errEl, 'As senhas não conferem.'); return; }
 
   try {
-    const dados = await ghGet('data/emails.json');
-    if (dados) {
-      const lista = dados.content;
-      const idx   = lista.findIndex(e => e.email.toLowerCase() === state.user.email);
-      if (idx >= 0) {
-        lista[idx].senha          = nova;
-        lista[idx].primeiro_acesso = false;
-        await ghPut('data/emails.json', lista, dados.sha, 'Senha atualizada: ' + state.user.nome);
-      }
-    }
-  } catch(e) { /* modo demo */ }
+    const r = await api('auth/senha', 'POST', { nova });
+    TOKEN = r.token;
+  } catch (e) { mostrarErro(errEl, e.message); return; }
 
   document.getElementById('modal-senha').classList.remove('active');
   entrarNoPortal(state.user.nome, state.user.email, state._registroDados && state._registroDados.admin);
@@ -590,6 +582,7 @@ async function entrarNoPortal(nome, email, isAdmin) {
 
 function mostrarErro(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 function logout() {
+  TOKEN = null;
   state = { user:null, unidade:null, especialidade:null, turma:null, modulo:null, pacientes:[], respostas:{}, outrosPacientes:[], jaPreenchido:false, modoCorrecao:false };
   document.getElementById('prof-email').value = '';
   document.getElementById('prof-senha').value = '';
@@ -987,7 +980,7 @@ async function carregarProgresso() {
       });
     }
     // Buscar respostas de hoje
-    const r = await fetch(`${CONFIG.worker_url}/github/data/responses/${hoje}`, { headers:{ Accept:'application/vnd.github.v3+json' } });
+    const r = await fetch(`${CONFIG.worker_url}/github/data/responses/${hoje}`, { headers:comCracha({ Accept:'application/vnd.github.v3+json' }) });
     const avaliadas = r.ok ? (await r.json()).filter(f => f.name.endsWith('.json')).length : 0;
     const pct = totalTurmas > 0 ? Math.round((avaliadas / totalTurmas) * 100) : 0;
     const cor = pct >= 80 ? '#27AE60' : pct >= 40 ? '#F39C12' : '#E74C3C';
@@ -1010,15 +1003,13 @@ async function loginAdmin() {
   const err   = document.getElementById('admin-error');
   if (!email || !pwd) { mostrarErro(err,'Preencha e-mail e senha.'); return; }
   try {
-    const dados = await ghGet('data/emails.json');
-    const lista = dados ? dados.content : [];
-    const reg = lista.find(e => e.email.toLowerCase() === email);
-    if (!reg || !reg.admin) { mostrarErro(err,'E-mail não autorizado como administrador.'); return; }
-    if (reg.senha !== pwd) { mostrarErro(err,'Senha incorreta.'); return; }
+    const sessao = await api('auth/login', 'POST', { email, senha: pwd });
+    if (!sessao.admin) { mostrarErro(err,'E-mail não autorizado como administrador.'); return; }
     err.style.display = 'none';
-    if (reg.primeiro_acesso) {
-      state.user = { nome: reg.nome, email: reg.email };
-      state._registroDados = reg;
+    TOKEN = sessao.token;
+    state.user = { nome: sessao.nome, email: sessao.email };
+    state._registroDados = { admin: true };
+    if (sessao.primeiro_acesso) {
       document.getElementById('nova-senha').value = '';
       document.getElementById('confirma-senha').value = '';
       document.getElementById('modal-erro').style.display = 'none';
@@ -1029,13 +1020,12 @@ async function loginAdmin() {
     document.getElementById('admin-panel').classList.remove('hidden');
     carregarEmails();
     carregarProgresso();
-  } catch(e) { mostrarErro(err,'Erro ao verificar acesso.'); }
+  } catch(e) { mostrarErro(err, e.message); }
 }
 
 async function carregarEmails() {
   try {
-    const d = await ghGet('data/emails.json');
-    renderEmailList(d ? d.content : []);
+    renderEmailList(await api('admin/professores'));
   } catch(e) {
     document.getElementById('email-list').innerHTML = '<div style="color:#718096;font-size:13px;padding:8px">Configure o TOKEN GitHub para gerenciar e-mails.</div>';
   }
@@ -1049,7 +1039,7 @@ function renderEmailList(emails) {
       <span><strong>${e.nome}</strong> — <span style="color:#718096">${e.email}</span>
         ${e.unidade?`<span class="tag-unit">${e.unidade}</span>`:''}
         ${e.admin?'<span class="tag-admin">ADMIN</span>':''}</span>
-      <button class="btn-remove" onclick="removerEmail(${i})">×</button>
+      <button class="btn-remove" onclick="removerEmail('${e.email}')">×</button>
     </div>`).join('');
 }
 
@@ -1059,26 +1049,19 @@ async function adicionarEmail() {
   const senha   = document.getElementById('novo-senha-padrao').value.trim();
   const unidade = document.getElementById('novo-unidade').value;
   if (!email || !nome || !senha) { alert('Preencha nome, e-mail e senha inicial.'); return; }
-  const d = await ghGet('data/emails.json');
-  const lista = d ? d.content : [];
-  if (lista.some(e => e.email === email)) { alert('E-mail já cadastrado.'); return; }
-  lista.push({ email, nome, unidade, senha, primeiro_acesso: true });
-  const ok = await ghPut('data/emails.json', lista, d?.sha, 'Adicionar professor: '+nome);
-  if (ok) {
+  try {
+    await api('admin/professores', 'POST', { email, nome, unidade, senha });
     document.getElementById('novo-email').value='';
     document.getElementById('novo-nome').value='';
     document.getElementById('novo-senha-padrao').value='';
-    renderEmailList(lista);
-  } else alert('Erro ao salvar. Verifique o TOKEN do GitHub.');
+    carregarEmails();
+  } catch (e) { alert(e.message); }
 }
 
-async function removerEmail(i) {
+async function removerEmail(email) {
   if (!confirm('Remover este e-mail?')) return;
-  const d = await ghGet('data/emails.json');
-  const lista = d ? d.content : [];
-  lista.splice(i,1);
-  await ghPut('data/emails.json', lista, d?.sha, 'Remover professor');
-  renderEmailList(lista);
+  try { await api('admin/professores', 'DELETE', { email }); carregarEmails(); }
+  catch (e) { alert(e.message); }
 }
 
 // ── Exportar Excel ──
@@ -1109,7 +1092,7 @@ async function exportarExcel(periodo) {
   try {
     for (const data of datas) {
       const r = await fetch(`${CONFIG.worker_url}/github/data/responses/${data}`,
-        { headers:{ Accept:'application/vnd.github.v3+json' } });
+        { headers:comCracha({ Accept:'application/vnd.github.v3+json' }) });
       if (!r.ok) continue;
       const arquivos = await r.json();
       if (!Array.isArray(arquivos)) continue;
