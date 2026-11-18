@@ -138,6 +138,10 @@ body{font-family:system-ui,-apple-system,Arial,sans-serif;background:var(--bg);c
 .btn-excel:hover{background:#A07A3A}
 .email-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:14px;margin-bottom:8px}
 .btn-remove{background:none;border:none;color:var(--error);cursor:pointer;font-size:18px;line-height:1}
+.tag-cod{background:#E8ECF2;color:#1B2A4A;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px}
+.tag-inativo{background:#F1F5F9;color:#64748B;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px}
+.btn-acao{background:none;border:1px solid #CBD5E1;color:#1B2A4A;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.btn-inativar{color:#B91C1C;border-color:#FECACA}
 .tag-admin{background:#FFF3CD;color:#856404;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px}
 .tag-unit{background:#E2E8F0;color:#4A5568;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px}
 .hidden{display:none!important}
@@ -695,7 +699,7 @@ async function selecionarTurma(el) {
     // Bloquear pacientes avaliados por OUTROS professores
     Object.entries(resp.avaliacoes).forEach(([nome, av]) => {
       if (!meusPacientes.includes(nome)) {
-        const quemAvaliou = resp.pacientes_prof?.[nome] || 'outro professor';
+        const quemAvaliou = 'outro professor';   // anonimato entre colegas
         state.pacientes_bloqueados[nome] = quemAvaliou;
         state.respostas[nome] = av;
       }
@@ -1103,12 +1107,15 @@ async function carregarEmails() {
 function renderEmailList(emails) {
   const list = document.getElementById('email-list');
   if (!emails.length) { list.innerHTML = '<div style="color:#718096;font-size:13px;padding:8px">Nenhum e-mail cadastrado ainda.</div>'; return; }
+  emails = [...emails.filter(e => !e.inativo), ...emails.filter(e => e.inativo)];
   list.innerHTML = emails.map((e,i) => `
-    <div class="email-item">
-      <span><strong>${e.nome}</strong> — <span style="color:#718096">${e.email}</span>
+    <div class="email-item"${e.inativo?' style="opacity:.55"':''}>
+      <span>${e.codigo?`<span class="tag-cod">Professor ${e.codigo}</span>`:''}<strong>${e.nome}</strong> — <span style="color:#718096">${e.email}</span>${e.inativo?'<span class="tag-inativo">INATIVO</span>':''}
         ${e.unidade?`<span class="tag-unit">${e.unidade}</span>`:''}
         ${e.admin?'<span class="tag-admin">ADMIN</span>':''}</span>
-      <button class="btn-remove" onclick="removerEmail('${e.email}')">×</button>
+      ${e.inativo
+        ? `<button class="btn-acao" onclick="reativarEmail('${e.email}')">Reativar</button>`
+        : `<button class="btn-acao btn-inativar" onclick="removerEmail('${e.email}')">Inativar</button>`}
     </div>`).join('');
 }
 
@@ -1128,8 +1135,12 @@ async function adicionarEmail() {
 }
 
 async function removerEmail(email) {
-  if (!confirm('Remover este e-mail?')) return;
+  if (!confirm('Inativar este professor? Ele não vai mais conseguir entrar no Portal, mas o histórico dele fica guardado e dá para reativar depois.')) return;
   try { await api('admin/professores', 'DELETE', { email }); carregarEmails(); }
+  catch (e) { alert(e.message); }
+}
+async function reativarEmail(email) {
+  try { await api('admin/professores', 'POST', { email, reativar: true }); carregarEmails(); }
   catch (e) { alert(e.message); }
 }
 
@@ -1156,6 +1167,11 @@ function datasParaPeriodo(periodo) {
 async function exportarExcel(periodo) {
   const datas = datasParaPeriodo(periodo || 'dia');
   const label_periodo = periodo==='semana'?'semana':periodo==='mes'?'mes':'hoje';
+  let codigoProf = {};
+  try {
+    (await api('admin/professores')).forEach(p => { if (p.nome && p.codigo) codigoProf[normalizar(p.nome)] = 'Professor ' + p.codigo; });
+  } catch (e) { alert('Não foi possível carregar a lista de professores: ' + e.message); return; }
+  const anonimo = nome => nome ? (codigoProf[normalizar(nome)] || 'Professor não identificado') : '';
   let linhas = [['Unidade','Data/Hora','Turma','Módulo','Professor','Horário','Paciente','Encaixe','Avaliação','Motivo','Indicação de Módulo','Contraindicação de Módulo','Obs 1','Obs 2','Obs 3']];
 
   try {
@@ -1197,7 +1213,7 @@ async function exportarExcel(periodo) {
           const motivo   = avaliacao==='nao' ? (motivos[paciente]||'') : '';
           const indica   = indicacoes[paciente] || '';
           const hora_pac = pacientes_hora[paciente] || '';
-          const prof     = pacientes_prof[paciente] || resp.professor?.nome || '';
+          const prof     = anonimo(pacientes_prof[paciente] || resp.professor?.nome || '');
           const encaixe  = outros.includes(paciente) ? 'Sim' : 'Não';
           linhas.push([resp.unidade||'', envio, resp.turma||'', modulo, prof, hora_pac, paciente, encaixe, lbl, motivo, indica, contraind[paciente] || '', obs1, obs2, obs3]);
         }
